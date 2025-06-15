@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
-import { Box, VStack, HStack, Text, Button, Image } from '@chakra-ui/react'
+import { Box, VStack, HStack, Text, Button, Image, IconButton, Heading, UnorderedList, ListItem } from '@chakra-ui/react'
 import { useAccount } from 'wagmi'
-import { NativeGlyphConnectButton } from '@use-glyph/sdk-react'
+import { NativeGlyphConnectButton, GLYPH_ICON_URL } from '@use-glyph/sdk-react'
+import { FaVolumeMute, FaVolumeUp } from 'react-icons/fa'
 
 // Game constants
 const GAME_DURATION = 60 // seconds
@@ -65,7 +66,12 @@ const Game = () => {
   const [activeHoles, setActiveHoles] = useState<ActiveHole[]>([])
   const [hits, setHits] = useState(0)
   const [misses, setMisses] = useState(0)
+  const [points, setPoints] = useState(0)
   const { isConnected } = useAccount()
+  const gameAreaRef = useRef<HTMLDivElement>(null);
+  const [muted, setMuted] = useState(false);
+  const [multiplier, setMultiplier] = useState(1);
+  const MAX_MULTIPLIER = 5;
 
   // Preload sounds
   const hitAudioRefs = useRef<HTMLAudioElement[]>([]);
@@ -152,6 +158,13 @@ const Game = () => {
     }
   }, [activeHoles, gameState, timeLeft, spawnMonkey])
 
+  // Reset multiplier on miss
+  useEffect(() => {
+    if (misses > 0) {
+      setMultiplier(1);
+    }
+  }, [misses]);
+
   // Cleanup timers on game end
   useEffect(() => {
     if (gameState !== 'playing') {
@@ -160,6 +173,19 @@ const Game = () => {
     }
   }, [gameState])
 
+  // Prevent scrolling in the game area on mobile
+  useEffect(() => {
+    const el = gameAreaRef.current;
+    if (!el) return;
+    const preventScroll = (e: TouchEvent) => {
+      e.preventDefault();
+    };
+    el.addEventListener('touchmove', preventScroll, { passive: false });
+    return () => {
+      el.removeEventListener('touchmove', preventScroll);
+    };
+  }, []);
+
   const startGame = useCallback(() => {
     setGameState('playing')
     setScore(0)
@@ -167,20 +193,24 @@ const Game = () => {
     setActiveHoles([])
     setHits(0)
     setMisses(0)
+    setPoints(0)
+    setMultiplier(1)
   }, [])
 
   const handleHoleClick = (holeIndex: number) => {
     if (gameState !== 'playing') return
     setActiveHoles(prev => prev.map(h => {
       if (h.index === holeIndex && !h.hit) {
-        setScore(s => s + 1)
+        // Increase multiplier first, then update score
+        const newMultiplier = Math.min(multiplier + 1, MAX_MULTIPLIER);
+        setMultiplier(newMultiplier);
+        setPoints(p => p + newMultiplier);
         setHits(hits => hits + 1)
         if (h.timer) clearTimeout(h.timer)
-        // Play random hit sound
-        if (hitAudioRefs.current.length > 0) {
+        // Play random hit sound if not muted
+        if (!muted && hitAudioRefs.current.length > 0) {
           const idx = Math.floor(Math.random() * hitAudioRefs.current.length);
           const audio = hitAudioRefs.current[idx];
-          // Restart if already playing
           audio.currentTime = 0;
           audio.play();
         }
@@ -194,11 +224,20 @@ const Game = () => {
     }))
   }
 
+  // Board-level click/tap handler for misses
+  const handleBoardClick = (e: React.MouseEvent | React.TouchEvent) => {
+    if (gameState !== 'playing') return;
+    // If we get here, it means we clicked the board but not a monkey
+    setMultiplier(1);
+    setMisses(m => m + 1);
+  };
+
   const accuracy = hits + misses > 0 ? ((hits / (hits + misses)) * 100).toFixed(1) : '100'
 
   const renderGameBoard = () => {
     return (
       <Box
+        ref={gameAreaRef}
         position="relative"
         width={["98vw", "90vw", "900px"]}
         maxWidth="900px"
@@ -212,7 +251,26 @@ const Game = () => {
           backgroundSize: 'cover',
           backgroundPosition: 'center',
         }}
+        onClick={handleBoardClick}
+        onTouchStart={handleBoardClick}
       >
+        {/* Mute/Unmute Button */}
+        <IconButton
+          aria-label={muted ? 'Unmute' : 'Mute'}
+          icon={muted ? <FaVolumeMute /> : <FaVolumeUp />}
+          onClick={() => setMuted(m => !m)}
+          position="absolute"
+          top={2}
+          right={2}
+          zIndex={10}
+          size="lg"
+          bg="whiteAlpha.800"
+          _hover={{ bg: 'whiteAlpha.900' }}
+        />
+        {/* Multiplier Display */}
+        <Box position="absolute" top={2} left={2} zIndex={10} bg="whiteAlpha.800" px={3} py={1} borderRadius="md" fontWeight="bold" fontSize="lg" color="black">
+          Multiplier: <span style={{color: multiplier > 1 ? '#e53e3e' : 'black'}}>{multiplier}x</span>
+        </Box>
         {activeHoles.map((hole) => {
           const pos = HOLE_POSITIONS[hole.index]
           return (
@@ -227,7 +285,15 @@ const Game = () => {
               width={["60px", "6vw", "90px"]}
               height={["60px", "6vw", "90px"]}
               cursor="inherit"
-              onClick={() => handleHoleClick(hole.index)}
+              onClick={e => {
+                e.stopPropagation();
+                handleHoleClick(hole.index);
+              }}
+              onTouchStart={e => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleHoleClick(hole.index);
+              }}
               zIndex={2}
             >
               <Image
@@ -250,14 +316,82 @@ const Game = () => {
     switch (gameState) {
       case 'idle':
         return (
-          <VStack spacing={4}>
-            <Text fontSize="2xl">Welcome to Whack-A-Monkey!</Text>
-            <Text>Cost to play: {GAME_COST} APE</Text>
+          <VStack 
+            spacing={6} 
+            p={8} 
+            bg="rgba(0, 0, 0, 0.8)" 
+            borderRadius="xl"
+            boxShadow="2xl"
+            maxW="600px"
+            w="full"
+            textAlign="center"
+          >
+            <Heading 
+              fontSize="4xl" 
+              bgGradient="linear(to-r, yellow.400, orange.500)"
+              bgClip="text"
+              mb={2}
+            >
+              Welcome to Whack-A-Monkey!
+            </Heading>
+            <Text fontSize="lg" color="gray.300">
+              Test your reflexes and earn APE tokens!
+            </Text>
+            <VStack spacing={2} bg="whiteAlpha.100" p={4} borderRadius="md" w="full">
+              <Text fontSize="xl" fontWeight="bold">Cost to play: {GAME_COST} APE</Text>
+              <Text color="gray.400">Hit monkeys to earn points and build your multiplier!</Text>
+            </VStack>
+            <VStack spacing={3} w="full">
+              <Text color="yellow.400" fontWeight="bold">How to Play:</Text>
+              <UnorderedList textAlign="left" color="gray.300" spacing={2}>
+                <ListItem>Click monkeys as they appear</ListItem>
+                <ListItem>Build your multiplier with consecutive hits</ListItem>
+                <ListItem>Don't miss or your multiplier resets!</ListItem>
+                <ListItem>Score as many points as possible in {GAME_DURATION} seconds</ListItem>
+              </UnorderedList>
+            </VStack>
             {!isConnected ? (
-              <NativeGlyphConnectButton />
+              <VStack spacing={4} w="full">
+                <Text color="gray.400">Connect your wallet to play</Text>
+                {/* Hidden NativeGlyphConnectButton */}
+                <Box display="none">
+                  <span id="glyph-connect-btn-wrapper">
+                    <NativeGlyphConnectButton />
+                  </span>
+                </Box>
+                <Button
+                  colorScheme="yellow"
+                  size="lg"
+                  w="full"
+                  h="60px"
+                  fontSize="xl"
+                  leftIcon={<img src={GLYPH_ICON_URL} alt="Glyph" style={{ width: 32, height: 32 }} />}
+                  _hover={{ transform: 'scale(1.05)' }}
+                  transition="all 0.2s"
+                  onClick={() => {
+                    // Find the first button inside the wrapper and click it
+                    const wrapper = document.getElementById('glyph-connect-btn-wrapper');
+                    if (wrapper) {
+                      const btn = wrapper.querySelector('button');
+                      if (btn) (btn as HTMLElement).click();
+                    }
+                  }}
+                >
+                  CONNECT VIA GLYPH, PAL
+                </Button>
+              </VStack>
             ) : (
-              <Button colorScheme="blue" onClick={startGame}>
-                Start Game
+              <Button 
+                colorScheme="yellow" 
+                size="lg" 
+                onClick={startGame}
+                w="full"
+                h="60px"
+                fontSize="xl"
+                _hover={{ transform: 'scale(1.05)' }}
+                transition="all 0.2s"
+              >
+                START GAME, I LOVE YOU
               </Button>
             )}
           </VStack>
@@ -266,21 +400,67 @@ const Game = () => {
         return (
           <VStack spacing={4}>
             <HStack>
-              <Text>Score: {score}</Text>
+              <Text>Points: {points}</Text>
               <Text>Time Left: {timeLeft}s</Text>
             </HStack>
             <Text>
-              Hits: {hits} | Misses: {misses} | Accuracy: {accuracy}%
+              Hits: {hits} | Points: {points} | Misses: {misses} | Accuracy: {accuracy}%
             </Text>
             {renderGameBoard()}
           </VStack>
         )
       case 'gameOver':
         return (
-          <VStack spacing={4}>
-            <Text fontSize="2xl">Game Over!</Text>
-            <Text>Final Score: {score}</Text>
-            <Button colorScheme="blue" onClick={startGame}>
+          <VStack 
+            spacing={6} 
+            p={8} 
+            bg="rgba(0, 0, 0, 0.8)" 
+            borderRadius="xl"
+            boxShadow="2xl"
+            maxW="600px"
+            w="full"
+            textAlign="center"
+          >
+            <Heading 
+              fontSize="4xl" 
+              bgGradient="linear(to-r, yellow.400, orange.500)"
+              bgClip="text"
+              mb={2}
+            >
+              Game Over!
+            </Heading>
+            <VStack spacing={4} bg="whiteAlpha.100" p={6} borderRadius="md" w="full">
+              <HStack spacing={8} justify="center">
+                <VStack>
+                  <Text color="gray.400">Final Points</Text>
+                  <Text fontSize="3xl" fontWeight="bold" color="yellow.400">{points}</Text>
+                </VStack>
+                <VStack>
+                  <Text color="gray.400">Total Hits</Text>
+                  <Text fontSize="3xl" fontWeight="bold" color="yellow.400">{hits}</Text>
+                </VStack>
+                <VStack>
+                  <Text color="gray.400">Accuracy</Text>
+                  <Text fontSize="3xl" fontWeight="bold" color="yellow.400">{accuracy}%</Text>
+                </VStack>
+              </HStack>
+              <Text color="gray.400" fontSize="sm">
+                {points > 50 ? "Amazing score! 🎉" : 
+                 points > 30 ? "Great job! 🌟" : 
+                 points > 15 ? "Good effort! 👍" : 
+                 "Keep practicing! 💪"}
+              </Text>
+            </VStack>
+            <Button 
+              colorScheme="yellow" 
+              size="lg" 
+              onClick={startGame}
+              w="full"
+              h="60px"
+              fontSize="xl"
+              _hover={{ transform: 'scale(1.05)' }}
+              transition="all 0.2s"
+            >
               Play Again
             </Button>
           </VStack>
@@ -300,16 +480,52 @@ const Game = () => {
   }
 
   return (
-    <Box
-      minH="100vh"
-      display="flex"
-      flexDirection="column"
-      alignItems="center"
-      justifyContent="center"
-      p={4}
-    >
-      {renderGameState()}
-    </Box>
+    <VStack minH="100vh" justify="center" align="center" spacing={0} bg="#1D0838">
+      {gameState === 'playing' ? (
+        // Only render the board and background during playing
+        <Box
+          ref={gameAreaRef}
+          position="relative"
+          width={["98vw", "90vw", "900px"]}
+          maxWidth="900px"
+          aspectRatio={"1920/1084"}
+          borderRadius="lg"
+          boxShadow="lg"
+          mt={4}
+        >
+          {renderGameState()}
+        </Box>
+      ) : (
+        // Only render the overlay UI for idle/gameOver/winner
+        <Box
+          position="relative"
+          width={["98vw", "90vw", "900px"]}
+          maxWidth="900px"
+          aspectRatio={"1920/1084"}
+          borderRadius="lg"
+          boxShadow="lg"
+          mt={4}
+          bg="#1D0838"
+          display="flex"
+          alignItems="center"
+          justifyContent="center"
+        >
+          <Box
+            position="absolute"
+            top={0}
+            left={0}
+            w="100%"
+            h="100%"
+            display="flex"
+            alignItems="center"
+            justifyContent="center"
+            zIndex={10}
+          >
+            {renderGameState()}
+          </Box>
+        </Box>
+      )}
+    </VStack>
   )
 }
 
