@@ -1,0 +1,38 @@
+type GameResult @entity {
+  id: ID!
+  player: Bytes!
+  score: BigInt!
+  timestamp: BigInt!
+  prizeAmount: BigInt!
+  transactionHash: Bytes!
+}
+
+type GameStats @entity {
+  id: ID!
+  totalGamesPlayed: BigInt!
+  totalPrizePool: BigInt!
+  currentHighScore: BigInt!
+  protocolFees: BigInt!
+}
+
+type PrizeClaim @entity {
+  id: ID!
+  winner: Bytes!
+  amount: BigInt!
+  timestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type ProtocolFeeWithdrawal @entity {
+  id: ID!
+  amount: BigInt!
+  timestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type PrizePoolFunding @entity {
+  id: ID!
+  amount: BigInt!
+  timestamp: BigInt!
+  transactionHash: Bytes!
+} 

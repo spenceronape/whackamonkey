@@ -1,0 +1,19 @@
+# dependencies
+node_modules/
+
+# production
+/dist/
+/build/
+
+# misc
+.DS_Store
+Thumbs.db
+*.log
+
+# local env files
+.env
+.env.local
+.env.*.local
+
+# Vite
+.vite/ 
