@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ChakraProvider, extendTheme, Box, Flex, Text, HStack, VStack, useDisclosure, Button } from '@chakra-ui/react'
-import { GlyphWidget, GlyphWalletProvider } from '@use-glyph/sdk-react'
+import { GlyphWidget } from '@use-glyph/sdk-react'
 import { useAccount, useWalletClient } from 'wagmi'
 import { WagmiConfig, createConfig, http } from 'wagmi'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
