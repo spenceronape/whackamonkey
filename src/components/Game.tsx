@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Box, VStack, HStack, Text, Button, Image, IconButton, Heading, UnorderedList, ListItem } from '@chakra-ui/react'
 import { useAccount, useWalletClient } from 'wagmi'
-import { NativeGlyphConnectButton, GLYPH_ICON_URL, useNativeGlyphConnection, useGlyph } from '@use-glyph/sdk-react'
+import { NativeGlyphConnectButton, GLYPH_ICON_URL, useGlyph } from '@use-glyph/sdk-react'
 import { FaVolumeMute, FaVolumeUp, FaTwitter } from 'react-icons/fa'
 import Confetti from 'react-confetti'
 import { ethers } from 'ethers'
