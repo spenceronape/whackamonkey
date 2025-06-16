@@ -741,6 +741,36 @@ const Game = () => {
           </Box>
         </Box>
       )}
+      {!isConnected ? (
+        <Button
+          colorScheme="yellow"
+          size="lg"
+          w="full"
+          h={{ base: "48px", md: "60px" }}
+          fontSize={{ base: "md", md: "xl" }}
+          _hover={{ transform: 'scale(1.05)' }}
+          transition="all 0.2s"
+          aria-label="Connect your wallet up top"
+          isDisabled
+        >
+          CONNECT UP TOP, PAL
+        </Button>
+      ) : (
+        <Button
+          colorScheme="yellow"
+          size="lg"
+          onClick={startGame}
+          w="full"
+          h={{ base: "48px", md: "60px" }}
+          fontSize={{ base: "md", md: "xl" }}
+          _hover={{ transform: 'scale(1.05)' }}
+          transition="all 0.2s"
+          aria-label="Start Whack-A-Monkey game"
+          isDisabled={!contract}
+        >
+          START GAME, I LOVE YOU
+        </Button>
+      )}
     </Box>
   )
 }
