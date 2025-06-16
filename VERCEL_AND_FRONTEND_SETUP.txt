@@ -1,0 +1,34 @@
+---
+Vercel Backend & Frontend Setup for Secure Server-Signed Score Submission
+---
+
+1. Vercel Backend Setup
+-----------------------
+- Go to your Vercel project dashboard.
+- Navigate to Settings > Environment Variables.
+- Add a new variable:
+  - Name: SIGNER_PRIVATE_KEY
+  - Value: (your backend wallet's private key, never share this)
+  - Environment: Production (and Preview if you want to test)
+- Redeploy your project after saving.
+
+- Ensure api/sign-score.js is present in your project root.
+- Vercel will automatically deploy this as a serverless function at /api/sign-score.
+
+2. Frontend Integration
+-----------------------
+- The contract ABI is in src/components/WhackAMonkeyABI.json.
+- The contract address is in src/components/contractAddress.ts (replace the placeholder with your deployed address).
+- The useSubmitScore hook is used in src/components/Game.tsx.
+- When a player wins, clicking "Claim Prize" will:
+  1. Request a backend signature.
+  2. Submit the score, nonce, and signature to the contract.
+  3. Show loading and error feedback.
+
+3. Next Steps
+-------------
+- Deploy your contract and update the address in contractAddress.ts.
+- Set your backend signing key in Vercel.
+- Test the full flow!
+
+Let me know if you want a test plan, further UI polish, or help with any other part of the stack! 

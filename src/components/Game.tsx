@@ -1,18 +1,34 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { Box, VStack, HStack, Text, Button, Image, IconButton, Heading, UnorderedList, ListItem } from '@chakra-ui/react'
-import { useAccount } from 'wagmi'
+import { useAccount, useWalletClient } from 'wagmi'
 import { NativeGlyphConnectButton, GLYPH_ICON_URL } from '@use-glyph/sdk-react'
-import { FaVolumeMute, FaVolumeUp } from 'react-icons/fa'
+import { FaVolumeMute, FaVolumeUp, FaTwitter } from 'react-icons/fa'
+import Confetti from 'react-confetti'
+import { ethers } from 'ethers'
+import { useSubmitScore } from './useSubmitScore'
+import WHACK_A_MONKEY_ABI from './WhackAMonkeyABI.json'
+import { WHACK_A_MONKEY_ADDRESS } from './contractAddress'
+import { Contract } from 'ethers'
+import { createPublicClient, http } from 'viem'
+import { apeChain } from 'viem/chains'
 
 // Game constants
 const GAME_DURATION = 60 // seconds
 const HOLE_COUNT = 12
 const MIN_ACTIVE_HOLES = 3
 const MAX_ACTIVE_HOLES = 6
-const GAME_COST = '2' // APE tokens
+const GAME_COST = '2.50' // APE tokens (2 $APE to prize pool, 0.50 $APE to operator)
 const MONKEY_LIFETIME_START = 2000 // ms
 const MONKEY_LIFETIME_END = 800 // ms
 const CRUSHED_DISPLAY_TIME = 400; // ms
+const SCORE_TO_BEAT = 50;
+const PRIZE_POOL_PER_PLAY = 2; // $APE per play goes to prize pool
+const PRIZE_POOL_WINNER_SHARE = 0.75; // 75% of prize pool goes to winner
+// For now, use a mock number of plays for the prize pool calculation
+const MOCK_PLAYS = 25; // 2 $APE per play * 25 = 50 $APE total
+const TOTAL_PRIZE_POOL = PRIZE_POOL_PER_PLAY * MOCK_PLAYS;
+const DISPLAYED_PRIZE_POOL = (TOTAL_PRIZE_POOL * PRIZE_POOL_WINNER_SHARE).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const GAME_COST_WEI = ethers.utils.parseEther('2.5');
 
 // Responsive, percentage-based coordinates for each hole
 const HOLE_POSITIONS = [
@@ -67,11 +83,18 @@ const Game = () => {
   const [hits, setHits] = useState(0)
   const [misses, setMisses] = useState(0)
   const [points, setPoints] = useState(0)
-  const { isConnected } = useAccount()
+  const { address: playerAddress, isConnected } = useAccount()
+  const { data: walletClient } = useWalletClient()
   const gameAreaRef = useRef<HTMLDivElement>(null);
   const [muted, setMuted] = useState(false);
   const [multiplier, setMultiplier] = useState(1);
   const MAX_MULTIPLIER = 5;
+  const [contract, setContract] = useState<Contract | null>(null);
+  const [startingGame, setStartingGame] = useState(false);
+  const [startError, setStartError] = useState(null);
+  const [prizePool, setPrizePool] = useState<string | null>(null);
+  const [highScore, setHighScore] = useState<string | null>(null);
+  const [highScoreHolder, setHighScoreHolder] = useState<string | null>(null);
 
   // Preload sounds
   const hitAudioRefs = useRef<HTMLAudioElement[]>([]);
@@ -82,6 +105,10 @@ const Game = () => {
       return audio;
     });
   }, []);
+
+  // Ref to always have the latest points value
+  const pointsRef = useRef(points);
+  useEffect(() => { pointsRef.current = points; }, [points]);
 
   // Helper to spawn a new monkey
   const spawnMonkey = useCallback((lifetime: number) => {
@@ -125,7 +152,7 @@ const Game = () => {
       timeInterval = setInterval(() => {
         setTimeLeft((prev) => {
           if (prev <= 1) {
-            setGameState('gameOver')
+            setGameState(pointsRef.current > SCORE_TO_BEAT ? 'winner' : 'gameOver');
             return 0
           }
           return prev - 1
@@ -186,16 +213,39 @@ const Game = () => {
     };
   }, []);
 
-  const startGame = useCallback(() => {
-    setGameState('playing')
-    setScore(0)
-    setTimeLeft(GAME_DURATION)
-    setActiveHoles([])
-    setHits(0)
-    setMisses(0)
-    setPoints(0)
-    setMultiplier(1)
-  }, [])
+  useEffect(() => {
+    if (isConnected && walletClient) {
+      const provider = new ethers.providers.Web3Provider(walletClient as any);
+      const signer = provider.getSigner();
+      const c = new Contract(WHACK_A_MONKEY_ADDRESS, WHACK_A_MONKEY_ABI, signer);
+      setContract(c);
+    } else {
+      setContract(null);
+    }
+  }, [isConnected, walletClient]);
+
+  const { submitScore, loading: submittingScore, error: submitError } = useSubmitScore(contract, playerAddress);
+
+  const startGame = useCallback(async () => {
+    setStartError(null);
+    if (!contract) return;
+    setStartingGame(true);
+    try {
+      const tx = await contract.startGame({ value: GAME_COST_WEI });
+      await tx.wait();
+      setGameState('playing');
+      setScore(0);
+      setTimeLeft(GAME_DURATION);
+      setActiveHoles([]);
+      setHits(0);
+      setMisses(0);
+      setPoints(0);
+      setMultiplier(1);
+    } catch (err) {
+      setStartError(err.message || 'Failed to start game');
+    }
+    setStartingGame(false);
+  }, [contract]);
 
   const handleHoleClick = (holeIndex: number) => {
     if (gameState !== 'playing') return
@@ -234,6 +284,27 @@ const Game = () => {
 
   const accuracy = hits + misses > 0 ? ((hits / (hits + misses)) * 100).toFixed(1) : '100'
 
+  // Fetch prize pool and high score from contract
+  useEffect(() => {
+    const fetchStats = async () => {
+      if (contract) {
+        try {
+          const pool = await contract.getPrizePool();
+          setPrizePool(ethers.utils.formatEther(pool));
+          const score = await contract.highScore();
+          setHighScore(score.toString());
+          const holder = await contract.highScoreHolder();
+          setHighScoreHolder(holder);
+        } catch (err) {
+          setPrizePool(null);
+          setHighScore(null);
+          setHighScoreHolder(null);
+        }
+      }
+    };
+    fetchStats();
+  }, [contract]);
+
   const renderGameBoard = () => {
     return (
       <Box
@@ -267,10 +338,6 @@ const Game = () => {
           bg="whiteAlpha.800"
           _hover={{ bg: 'whiteAlpha.900' }}
         />
-        {/* Multiplier Display */}
-        <Box position="absolute" top={2} left={2} zIndex={10} bg="whiteAlpha.800" px={3} py={1} borderRadius="md" fontWeight="bold" fontSize="lg" color="black">
-          Multiplier: <span style={{color: multiplier > 1 ? '#e53e3e' : 'black'}}>{multiplier}x</span>
-        </Box>
         {activeHoles.map((hole) => {
           const pos = HOLE_POSITIONS[hole.index]
           return (
@@ -319,6 +386,7 @@ const Game = () => {
           <VStack 
             spacing={6} 
             p={8} 
+            px={{ base: 2, md: 8 }}
             bg="rgba(0, 0, 0, 0.8)" 
             borderRadius="xl"
             boxShadow="2xl"
@@ -327,27 +395,28 @@ const Game = () => {
             textAlign="center"
           >
             <Heading 
-              fontSize="4xl" 
+              fontSize={{ base: "2xl", md: "4xl" }}
               bgGradient="linear(to-r, yellow.400, orange.500)"
               bgClip="text"
               mb={2}
             >
-              Welcome to Whack-A-Monkey!
+              WANNA' WHACK-A-MONKEY?
             </Heading>
-            <Text fontSize="lg" color="gray.300">
-              Test your reflexes and earn APE tokens!
+            <Text fontSize={{ base: "md", md: "lg" }} color="gray.300">
+              TEST YOUR REFLEXES, PAL, YOU COULD WIN BIG!
             </Text>
-            <VStack spacing={2} bg="whiteAlpha.100" p={4} borderRadius="md" w="full">
-              <Text fontSize="xl" fontWeight="bold">Cost to play: {GAME_COST} APE</Text>
-              <Text color="gray.400">Hit monkeys to earn points and build your multiplier!</Text>
+            <VStack spacing={2} bg="whiteAlpha.100" p={{ base: 2, md: 4 }} borderRadius="md" w="full">
+              <Text fontSize={{ base: "md", md: "lg" }} fontWeight="bold" color="yellow.300">STEP RIGHT UP FOR ONLY {GAME_COST} $APE</Text>
+              <Text color="gray.400" fontSize={{ base: "sm", md: "md" }}>BASH IN MY BEAUTIFUL FACE TO EARN POINTS AND WIN!</Text>
             </VStack>
             <VStack spacing={3} w="full">
               <Text color="yellow.400" fontWeight="bold">How to Play:</Text>
               <UnorderedList textAlign="left" color="gray.300" spacing={2}>
-                <ListItem>Click monkeys as they appear</ListItem>
-                <ListItem>Build your multiplier with consecutive hits</ListItem>
-                <ListItem>Don't miss or your multiplier resets!</ListItem>
-                <ListItem>Score as many points as possible in {GAME_DURATION} seconds</ListItem>
+                <ListItem>BONK MONKEYS AS THEY APPEAR</ListItem>
+                <ListItem>BUILD YOUR MULTIPLIER WITH CONSECUTIVE HITS</ListItem>
+                <ListItem>DON'T MISS OR YOUR MULTIPLIER RESETS!</ListItem>
+                <ListItem>SCORE AS MANY POINTS AS POSSIBLE IN {GAME_DURATION} SECONDS</ListItem>
+                <ListItem>GET THE HIGH SCORE AND WIN THE PRIZE POOL*</ListItem>
               </UnorderedList>
             </VStack>
             {!isConnected ? (
@@ -363,8 +432,8 @@ const Game = () => {
                   colorScheme="yellow"
                   size="lg"
                   w="full"
-                  h="60px"
-                  fontSize="xl"
+                  h={{ base: "48px", md: "60px" }}
+                  fontSize={{ base: "md", md: "xl" }}
                   leftIcon={<img src={GLYPH_ICON_URL} alt="Glyph" style={{ width: 32, height: 32 }} />}
                   _hover={{ transform: 'scale(1.05)' }}
                   transition="all 0.2s"
@@ -376,37 +445,104 @@ const Game = () => {
                       if (btn) (btn as HTMLElement).click();
                     }
                   }}
+                  aria-label="Connect wallet using Glyph"
                 >
                   CONNECT VIA GLYPH, PAL
                 </Button>
               </VStack>
             ) : (
-              <Button 
-                colorScheme="yellow" 
-                size="lg" 
+              <Button
+                colorScheme="yellow"
+                size="lg"
                 onClick={startGame}
                 w="full"
-                h="60px"
-                fontSize="xl"
+                h={{ base: "48px", md: "60px" }}
+                fontSize={{ base: "md", md: "xl" }}
                 _hover={{ transform: 'scale(1.05)' }}
                 transition="all 0.2s"
+                aria-label="Start Whack-A-Monkey game"
+                isLoading={startingGame}
+                isDisabled={startingGame || !contract}
               >
-                START GAME, I LOVE YOU
+                {startingGame ? 'Starting...' : 'START GAME, I LOVE YOU'}
               </Button>
             )}
+            {startError && <Text color="red.400">{startError}</Text>}
           </VStack>
         )
       case 'playing':
         return (
-          <VStack spacing={4}>
-            <HStack>
-              <Text>Points: {points}</Text>
-              <Text>Time Left: {timeLeft}s</Text>
-            </HStack>
-            <Text>
-              Hits: {hits} | Points: {points} | Misses: {misses} | Accuracy: {accuracy}%
-            </Text>
+          <VStack spacing={6} mt={{ base: -2, md: -8 }}>
+            <Box
+              bg="blackAlpha.800"
+              p={{ base: 2, md: 3 }}
+              borderRadius="md"
+              border="2px solid"
+              borderColor="yellow.400"
+              boxShadow="0 0 10px rgba(255, 215, 0, 0.3)"
+              width="100%"
+              maxW={{ base: "99%", md: "600px" }}
+              overflowX="auto"
+            >
+              <HStack spacing={{ base: 3, md: 6 }} justify="center" fontFamily="mono">
+                <VStack spacing={0}>
+                  <Text color="gray.400" fontSize={{ base: "2xs", md: "sm" }}>SCORE TO BEAT</Text>
+                  <Text color="purple.400" fontSize={{ base: "lg", md: "xl" }} fontWeight="bold" fontFamily="mono">{SCORE_TO_BEAT}</Text>
+                </VStack>
+                <Text color="yellow.400">|</Text>
+                <VStack spacing={0}>
+                  <Text color="gray.400" fontSize={{ base: "xs", md: "sm" }}>POINTS</Text>
+                  <Text color="yellow.400" fontSize={{ base: "lg", md: "xl" }} fontWeight="bold" fontFamily="mono">{points}</Text>
+                </VStack>
+                <Text color="yellow.400">|</Text>
+                <VStack spacing={0}>
+                  <Text color="gray.400" fontSize={{ base: "xs", md: "sm" }}>TIME</Text>
+                  <Text color="red.400" fontSize={{ base: "lg", md: "xl" }} fontWeight="bold" fontFamily="mono">{timeLeft}s</Text>
+                </VStack>
+                <Text color="yellow.400">|</Text>
+                <VStack spacing={0}>
+                  <Text color="gray.400" fontSize={{ base: "xs", md: "sm" }}>PRIZE POOL</Text>
+                  <Text color="green.400" fontSize={{ base: "lg", md: "xl" }} fontWeight="bold" fontFamily="mono">{DISPLAYED_PRIZE_POOL} $APE</Text>
+                </VStack>
+              </HStack>
+            </Box>
             {renderGameBoard()}
+            <Box
+              bg="blackAlpha.800"
+              p={{ base: 2, md: 3 }}
+              borderRadius="md"
+              border="2px solid"
+              borderColor="yellow.400"
+              boxShadow="0 0 10px rgba(255, 215, 0, 0.3)"
+              width="100%"
+              maxW={{ base: "99%", md: "600px" }}
+              overflowX="auto"
+            >
+              <HStack spacing={{ base: 3, md: 6 }} justify="center" fontFamily="mono">
+                <Text color="yellow.400" fontWeight="bold" fontSize={{ base: "sm", md: "md" }}>Stats:</Text>
+                <HStack spacing={{ base: 2, md: 4 }}>
+                  <VStack spacing={0}>
+                    <Text color="gray.400" fontSize={{ base: "xs", md: "sm" }}>HITS</Text>
+                    <Text color="green.400" fontSize={{ base: "lg", md: "xl" }} fontWeight="bold" fontFamily="mono">{hits}</Text>
+                  </VStack>
+                  <Text color="yellow.400">|</Text>
+                  <VStack spacing={0}>
+                    <Text color="gray.400" fontSize={{ base: "xs", md: "sm" }}>MISSES</Text>
+                    <Text color="red.400" fontSize={{ base: "lg", md: "xl" }} fontWeight="bold" fontFamily="mono">{misses}</Text>
+                  </VStack>
+                  <Text color="yellow.400">|</Text>
+                  <VStack spacing={0}>
+                    <Text color="gray.400" fontSize={{ base: "xs", md: "sm" }}>ACCURACY</Text>
+                    <Text color="blue.400" fontSize={{ base: "lg", md: "xl" }} fontWeight="bold" fontFamily="mono">{accuracy}%</Text>
+                  </VStack>
+                  <Text color="yellow.400">|</Text>
+                  <VStack spacing={0}>
+                    <Text color="gray.400" fontSize={{ base: "xs", md: "sm" }}>MULTIPLIER</Text>
+                    <Text color="yellow.400" fontSize={{ base: "lg", md: "xl" }} fontWeight="bold" fontFamily="mono">{multiplier}x</Text>
+                  </VStack>
+                </HStack>
+              </HStack>
+            </Box>
           </VStack>
         )
       case 'gameOver':
@@ -414,6 +550,7 @@ const Game = () => {
           <VStack 
             spacing={6} 
             p={8} 
+            px={{ base: 2, md: 8 }}
             bg="rgba(0, 0, 0, 0.8)" 
             borderRadius="xl"
             boxShadow="2xl"
@@ -422,7 +559,7 @@ const Game = () => {
             textAlign="center"
           >
             <Heading 
-              fontSize="4xl" 
+              fontSize={{ base: "2xl", md: "4xl" }}
               bgGradient="linear(to-r, yellow.400, orange.500)"
               bgClip="text"
               mb={2}
@@ -445,21 +582,36 @@ const Game = () => {
                 </VStack>
               </HStack>
               <Text color="gray.400" fontSize="sm">
-                {points > 50 ? "Amazing score! 🎉" : 
-                 points > 30 ? "Great job! 🌟" : 
-                 points > 15 ? "Good effort! 👍" : 
-                 "Keep practicing! 💪"}
+                {points > 100 ? "GREAT SCORE, PAL! 🎉" : 
+                 points > 75 ? "NOT BAD, PAL! 🌟" : 
+                 points > 50 ? "GOOD EFFORT, PAL! 👍" : 
+                 "I LOVE YOU, PAL! 💪"}
               </Text>
             </VStack>
+            <Button
+              as="a"
+              href={`https://x.com/intent/tweet?text=I just played Whack-A-Monkey and scored ${points} points! Think you can beat me? Play now at https://whack.mistermonkee.com`}
+              target="_blank"
+              leftIcon={<FaTwitter />}
+              colorScheme="twitter"
+              variant="outline"
+              fontWeight="bold"
+              fontSize="lg"
+              mt={2}
+              aria-label="Share your score on X (Twitter)"
+            >
+              Share this on X
+            </Button>
             <Button 
               colorScheme="yellow" 
               size="lg" 
               onClick={startGame}
               w="full"
-              h="60px"
-              fontSize="xl"
+              h={{ base: "48px", md: "60px" }}
+              fontSize={{ base: "md", md: "xl" }}
               _hover={{ transform: 'scale(1.05)' }}
               transition="all 0.2s"
+              aria-label="Play Whack-A-Monkey again"
             >
               Play Again
             </Button>
@@ -467,22 +619,69 @@ const Game = () => {
         )
       case 'winner':
         return (
-          <VStack spacing={4}>
-            <Text fontSize="2xl">Congratulations!</Text>
-            <Text>You've won the prize pool!</Text>
-            <Button colorScheme="green">Claim Prize</Button>
-            <Button colorScheme="blue" onClick={startGame}>
-              Play Again
-            </Button>
-          </VStack>
+          <Box position="relative" w="full" minH="400px">
+            <Confetti width={window.innerWidth} height={window.innerHeight} numberOfPieces={300} recycle={false} />
+            <VStack spacing={6} p={8} px={{ base: 2, md: 8 }} bg="rgba(0,0,0,0.92)" borderRadius="xl" boxShadow="2xl" maxW="600px" w="full" textAlign="center" mx="auto" mt={4}>
+              <VStack spacing={1}>
+                <Text fontSize={{ base: '2xl', md: '3xl' }} fontWeight="extrabold" color="yellow.300" textShadow="2px 2px 0 #6d1a7b, 0 2px 8px #000">
+                  YOU REALLY BEAT ME UP, PAL!
+                </Text>
+                <Text fontSize={{ base: '2xl', md: '3xl' }} fontWeight="extrabold" color="yellow.300" textShadow="2px 2px 0 #6d1a7b, 0 2px 8px #000">
+                  CONGRATS YOU FILTHY APE
+                </Text>
+                <Text fontSize={{ base: '2xl', md: '3xl' }} fontWeight="extrabold" color="yellow.300" textShadow="2px 2px 0 #6d1a7b, 0 2px 8px #000">
+                  I LOVE YOU.
+                </Text>
+              </VStack>
+              <Text fontSize={{ base: 'xl', md: '2xl' }} color="green.300" fontWeight="bold" letterSpacing="wide">
+                YOU WON
+              </Text>
+              <Text fontSize={{ base: '2xl', md: '3xl' }} color="#00FFB0" fontWeight="extrabold" textShadow="0 0 8px #00FFB0">
+                {DISPLAYED_PRIZE_POOL} $APE
+              </Text>
+              <Button
+                as="a"
+                href={`https://x.com/intent/tweet?text=I just WON the prize pool in Whack-A-Monkey! Can you beat my score? Play now at https://whack.mistermonkee.com`}
+                target="_blank"
+                leftIcon={<FaTwitter />}
+                colorScheme="twitter"
+                variant="outline"
+                fontWeight="bold"
+                fontSize="lg"
+                mt={2}
+                aria-label="Share your win on X (Twitter)"
+              >
+                Share this on X
+              </Button>
+              <Button
+                colorScheme="yellow"
+                size="lg"
+                fontSize={{ base: "md", md: "xl" }}
+                fontWeight="bold"
+                px={10}
+                py={6}
+                borderRadius="full"
+                boxShadow="0 0 16px #FFD600"
+                aria-label="Claim your prize"
+                isLoading={submittingScore}
+                onClick={async () => {
+                  await submitScore(points);
+                }}
+                isDisabled={!contract || submittingScore}
+              >
+                {submittingScore ? 'Submitting...' : 'Claim Prize'}
+              </Button>
+              {submittingScore && <Text color="yellow.300">Submitting your score to the blockchain...</Text>}
+              {submitError && <Text color="red.400">{submitError}</Text>}
+            </VStack>
+          </Box>
         )
     }
   }
 
   return (
-    <VStack minH="100vh" justify="center" align="center" spacing={0} bg="#1D0838">
+    <Box minH="calc(100vh - 80px)" display="flex" flexDirection="column" justifyContent="center" alignItems="center" bg="#1D0838" flexGrow={1} mt={{ base: "-5vh", md: "-15vh" }}>
       {gameState === 'playing' ? (
-        // Only render the board and background during playing
         <Box
           ref={gameAreaRef}
           position="relative"
@@ -491,12 +690,11 @@ const Game = () => {
           aspectRatio={"1920/1084"}
           borderRadius="lg"
           boxShadow="lg"
-          mt={4}
+          mt={0}
         >
           {renderGameState()}
         </Box>
       ) : (
-        // Only render the overlay UI for idle/gameOver/winner
         <Box
           position="relative"
           width={["98vw", "90vw", "900px"]}
@@ -504,7 +702,7 @@ const Game = () => {
           aspectRatio={"1920/1084"}
           borderRadius="lg"
           boxShadow="lg"
-          mt={4}
+          mt={0}
           bg="#1D0838"
           display="flex"
           alignItems="center"
@@ -525,7 +723,7 @@ const Game = () => {
           </Box>
         </Box>
       )}
-    </VStack>
+    </Box>
   )
 }
 

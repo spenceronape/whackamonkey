@@ -1,0 +1,27 @@
+specVersion: 0.0.4
+schema:
+  file: ./schema.graphql
+dataSources:
+  - kind: ethereum/contract
+    name: WhackAMonkey
+    network: mainnet # or your target network
+    source:
+      address: "<CONTRACT_ADDRESS>"
+      abi: WhackAMonkey
+      startBlock: <START_BLOCK>
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: typescript
+      entities:
+        - HighScore
+        - PrizeClaim
+      abis:
+        - name: WhackAMonkey
+          file: ./abis/WhackAMonkey.json
+      eventHandlers:
+        - event: HighScoreUpdated(address,uint256,uint256,address,uint256)
+          handler: handleHighScoreUpdated
+        - event: PrizeClaimed(address,uint256)
+          handler: handlePrizeClaimed
+      file: ./src/mapping.ts 
