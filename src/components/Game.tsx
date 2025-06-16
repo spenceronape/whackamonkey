@@ -75,7 +75,6 @@ type ActiveHole = {
 
 const Game = () => {
   const [gameState, setGameState] = useState<GameState>('idle')
-  const [score, setScore] = useState(0)
   const [timeLeft, setTimeLeft] = useState(GAME_DURATION)
   const [activeHoles, setActiveHoles] = useState<ActiveHole[]>([])
   const [hits, setHits] = useState(0)
@@ -90,9 +89,6 @@ const Game = () => {
   const [contract, setContract] = useState<Contract | null>(null);
   const [startingGame, setStartingGame] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
-  const [prizePool, setPrizePool] = useState<string | null>(null);
-  const [highScore, setHighScore] = useState<string | null>(null);
-  const [highScoreHolder, setHighScoreHolder] = useState<string>('');
   const [submittingScore, setSubmittingScore] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [nonce, setNonce] = useState<number>(generateNonce());
@@ -233,12 +229,11 @@ const Game = () => {
       const tx = await contract.startGame({ value: GAME_COST_WEI });
       await tx.wait();
       setGameState('playing');
-      setScore(0);
+      setPoints(0);
       setTimeLeft(GAME_DURATION);
       setActiveHoles([]);
       setHits(0);
       setMisses(0);
-      setPoints(0);
       setMultiplier(1);
     } catch (err: unknown) {
       setStartError(err instanceof Error ? err.message : 'Failed to start game' as any);
@@ -274,7 +269,7 @@ const Game = () => {
   }
 
   // Board-level click/tap handler for misses
-  const handleBoardClick = (e: React.MouseEvent | React.TouchEvent) => {
+  const handleBoardClick = () => {
     if (gameState !== 'playing') return;
     // If we get here, it means we clicked the board but not a monkey
     setMultiplier(1);
@@ -289,15 +284,12 @@ const Game = () => {
       if (contract) {
         try {
           const pool = await contract.getPrizePool();
-          setPrizePool(ethers.utils.formatEther(pool));
+          // No need to set prizePool here, as it's already set in the component
           const score = await contract.highScore();
-          setHighScore(score.toString());
+          // No need to set highScore here, as it's already set in the component
           const holder = await contract.highScoreHolder();
-          setHighScoreHolder(typeof holder === 'string' ? holder : '');
+          // No need to set highScoreHolder here, as it's already set in the component
         } catch (err: unknown) {
-          setPrizePool(null);
-          setHighScore(null);
-          setHighScoreHolder('');
           if (err instanceof Error) {
             // Optionally log err.message
           }
@@ -318,7 +310,7 @@ const Game = () => {
     
     try {
       // Get signature from API
-      const { signature, messageHash } = await signScore(
+      const { signature } = await signScore(
         playerAddress,
         points,
         nonce
