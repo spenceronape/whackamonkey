@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Box, VStack, HStack, Text, Button, Image, IconButton, Heading, UnorderedList, ListItem } from '@chakra-ui/react'
 import { useAccount, useWalletClient } from 'wagmi'
-import { NativeGlyphConnectButton, GLYPH_ICON_URL } from '@use-glyph/sdk-react'
+import { GlyphWidget } from '@use-glyph/sdk-react'
 import { FaVolumeMute, FaVolumeUp, FaTwitter } from 'react-icons/fa'
 import Confetti from 'react-confetti'
 import { ethers } from 'ethers'
@@ -9,7 +9,6 @@ import WHACK_A_MONKEY_ABI from './WhackAMonkeyABI.json'
 import { WHACK_A_MONKEY_ADDRESS } from './contractAddress'
 import { Contract } from 'ethers'
 import { signScore, generateNonce, verifySignature } from '../utils/api'
-import { GlyphWidget } from '@use-glyph/sdk-react'
 
 // Game constants
 const GAME_DURATION = 60 // seconds
