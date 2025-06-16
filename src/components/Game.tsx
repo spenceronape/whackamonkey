@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Box, VStack, HStack, Text, Button, Image, IconButton, Heading, UnorderedList, ListItem } from '@chakra-ui/react'
 import { useAccount, useWalletClient } from 'wagmi'
-import { NativeGlyphConnectButton, GLYPH_ICON_URL, useNativeGlyphConnection } from '@use-glyph/sdk-react'
+import { NativeGlyphConnectButton, GLYPH_ICON_URL, useNativeGlyphConnection, useNativeGlyphSignIn } from '@use-glyph/sdk-react'
 import { FaVolumeMute, FaVolumeUp, FaTwitter } from 'react-icons/fa'
 import Confetti from 'react-confetti'
 import { ethers } from 'ethers'
@@ -82,6 +82,7 @@ const Game = () => {
   const [points, setPoints] = useState(0)
   const { address: playerAddress, isConnected } = useAccount()
   const { isConnected: isGlyphConnected } = useNativeGlyphConnection()
+  const { signIn, isSigningIn } = useNativeGlyphSignIn()
   const { data: walletClient } = useWalletClient()
   const gameAreaRef = useRef<HTMLDivElement>(null);
   const [muted, setMuted] = useState(false);
@@ -491,17 +492,11 @@ const Game = () => {
                   leftIcon={<img src={GLYPH_ICON_URL} alt="Glyph" style={{ width: 32, height: 32 }} />}
                   _hover={{ transform: 'scale(1.05)' }}
                   transition="all 0.2s"
-                  onClick={() => {
-                    // Find the first button inside the wrapper and click it
-                    const wrapper = document.getElementById('glyph-connect-btn-wrapper');
-                    if (wrapper) {
-                      const btn = wrapper.querySelector('button');
-                      if (btn) (btn as HTMLElement).click();
-                    }
-                  }}
+                  onClick={() => signIn()}
+                  isLoading={isSigningIn}
                   aria-label="Sign in with Glyph"
                 >
-                  SIGN IN, PAL
+                  {isSigningIn ? 'SIGNING IN...' : 'SIGN IN, PAL'}
                 </Button>
               </VStack>
             ) : (
