@@ -3,6 +3,8 @@ import { createServer as createViteServer } from 'vite';
 import signScoreHandler from './api/sign-score';
 import fs from 'fs';
 import path from 'path';
+import { ethers } from 'ethers';
+import { signScore as signScoreUtil } from './src/utils/api';
 
 async function createServer() {
   const app = express();
@@ -18,7 +20,11 @@ async function createServer() {
   app.use(vite.middlewares);
 
   // API routes
-  app.post('/api/sign-score', signScoreHandler);
+  app.post('/api/sign-score', async (req, res) => {
+    const { player, score, nonce } = req.body;
+    const signature = await signScoreUtil(player, score, nonce);
+    res.json({ signature });
+  });
 
   // Handle all other routes with Vite's dev server
   app.use('*', async (req: Request, res: Response) => {

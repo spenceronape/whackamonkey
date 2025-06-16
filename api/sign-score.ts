@@ -77,4 +77,13 @@ export default async function handler(req: Request, res: Response) {
       message: error instanceof Error ? error.message : "Unknown error"
     });
   }
-} 
+}
+
+export const signScore = async (player: string, score: number, nonce: number) => {
+  const response = await fetch('/api/sign-score', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ player, score, nonce }),
+  });
+  return response.json();
+}; 
