@@ -1,8 +1,15 @@
 import { ethers } from "ethers";
 import type { Request, Response } from 'express';
 
-const PRIVATE_KEY = process.env.SIGNER_PRIVATE_KEY;
-const wallet = new ethers.Wallet(PRIVATE_KEY!);
+// Use a default test key for development if SIGNER_PRIVATE_KEY is not set
+const PRIVATE_KEY = process.env.SIGNER_PRIVATE_KEY || '0x0000000000000000000000000000000000000000000000000000000000000001';
+console.log('Environment variables:', {
+  SIGNER_PRIVATE_KEY: PRIVATE_KEY ? 'Present' : 'Missing',
+  NODE_ENV: process.env.NODE_ENV
+});
+
+const wallet = new ethers.Wallet(PRIVATE_KEY);
+console.log('Wallet address:', wallet.address);
 
 // Maximum allowed score to prevent cheating
 const MAX_SCORE = 1000;
