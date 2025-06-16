@@ -3,15 +3,39 @@ import { createServer as createViteServer } from 'vite';
 import signScoreHandler from './api/sign-score';
 import fs from 'fs';
 import path from 'path';
+import dotenv from 'dotenv';
+import cors from 'cors';
+
+// Load environment variables from .env.local
+dotenv.config({ path: '.env.local' });
 
 async function createServer() {
   const app = express();
+  
+  // Configure CORS
+  const corsOptions = {
+    origin: process.env.NODE_ENV === 'production' 
+      ? ['https://whack.mistermonkee.com', 'https://www.whack.mistermonkee.com']
+      : ['http://localhost:3000', 'http://localhost:5173'],
+    methods: ['GET', 'POST'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
+    maxAge: 86400 // 24 hours
+  };
+  
+  app.use(cors(corsOptions));
   app.use(express.json());
 
-  // Create Vite server in middleware mode
+  // Create Vite server
   const vite = await createViteServer({
-    server: { middlewareMode: true },
-    appType: 'custom'
+    server: {
+      port: 3000,
+      host: true,
+      hmr: {
+        port: 3000
+      }
+    },
+    appType: 'spa'
   });
 
   // Use vite's connect instance as middleware
@@ -19,31 +43,6 @@ async function createServer() {
 
   // API routes
   app.post('/api/sign-score', signScoreHandler);
-
-  // Handle all other routes with Vite's dev server
-  app.use('*', async (req: Request, res: Response) => {
-    try {
-      // Read index.html
-      const template = fs.readFileSync(
-        path.resolve(process.cwd(), 'index.html'),
-        'utf-8'
-      );
-
-      // Apply Vite HTML transforms
-      const transformedTemplate = await vite.transformIndexHtml(
-        req.originalUrl,
-        template
-      );
-
-      // Send the rendered HTML back
-      res.status(200).set({ 'Content-Type': 'text/html' }).end(transformedTemplate);
-    } catch (e) {
-      // If an error is caught, let Vite fix the stack trace
-      vite.ssrFixStacktrace(e as Error);
-      console.error(e);
-      res.status(500).end((e as Error).message);
-    }
-  });
 
   return app;
 }

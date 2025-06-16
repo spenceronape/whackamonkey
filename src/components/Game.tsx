@@ -4,13 +4,14 @@ import { useAccount, useWalletClient } from 'wagmi'
 import { NativeGlyphConnectButton, GLYPH_ICON_URL } from '@use-glyph/sdk-react'
 import { FaVolumeMute, FaVolumeUp, FaTwitter } from 'react-icons/fa'
 import Confetti from 'react-confetti'
-import { ethers } from 'ethers'
+import { ethers, Contract } from 'ethers'
 import WHACK_A_MONKEY_ABI from './WhackAMonkeyABI.json'
 import { WHACK_A_MONKEY_ADDRESS } from './contractAddress'
-import { Contract } from 'ethers'
 import { createPublicClient, http } from 'viem'
 import { apeChain } from 'viem/chains'
 import { signScore, generateNonce, verifySignature } from '../utils/api'
+import { useGlyph } from "@use-glyph/sdk-react";
+import { signScoreWithGlyph } from '../utils/api';
 
 // Game constants
 const GAME_DURATION = 60 // seconds
@@ -22,12 +23,6 @@ const MONKEY_LIFETIME_START = 2000 // ms
 const MONKEY_LIFETIME_END = 800 // ms
 const CRUSHED_DISPLAY_TIME = 400; // ms
 const SCORE_TO_BEAT = 50;
-const PRIZE_POOL_PER_PLAY = 2; // $APE per play goes to prize pool
-const PRIZE_POOL_WINNER_SHARE = 0.75; // 75% of prize pool goes to winner
-// For now, use a mock number of plays for the prize pool calculation
-const MOCK_PLAYS = 25; // 2 $APE per play * 25 = 50 $APE total
-const TOTAL_PRIZE_POOL = PRIZE_POOL_PER_PLAY * MOCK_PLAYS;
-const DISPLAYED_PRIZE_POOL = (TOTAL_PRIZE_POOL * PRIZE_POOL_WINNER_SHARE).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const GAME_COST_WEI = ethers.utils.parseEther('2.5');
 
 // Responsive, percentage-based coordinates for each hole
@@ -75,6 +70,11 @@ type ActiveHole = {
   timer: NodeJS.Timeout | null
 }
 
+const publicClient = createPublicClient({
+  chain: apeChain,
+  transport: http('https://rpc.apechain.com')
+})
+
 const Game = () => {
   const [gameState, setGameState] = useState<GameState>('idle')
   const [score, setScore] = useState(0)
@@ -98,6 +98,7 @@ const Game = () => {
   const [submittingScore, setSubmittingScore] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [nonce, setNonce] = useState<number>(generateNonce());
+  const { signMessage, ready, authenticated } = useGlyph();
 
   // Preload sounds
   const hitAudioRefs = useRef<HTMLAudioElement[]>([]);
@@ -218,13 +219,21 @@ const Game = () => {
 
   useEffect(() => {
     if (isConnected && walletClient) {
-      const provider = new ethers.providers.Web3Provider(walletClient as any);
-      const signer = provider.getSigner();
-      const c = new Contract(WHACK_A_MONKEY_ADDRESS, WHACK_A_MONKEY_ABI, signer);
-      setContract(c);
+      try {
+        const provider = new ethers.providers.Web3Provider(walletClient.transport);
+        const signer = provider.getSigner();
+        const c = new Contract(WHACK_A_MONKEY_ADDRESS, WHACK_A_MONKEY_ABI, signer);
+        setContract(c);
+      } catch (error) {
+        console.error('Error setting up contract:', error);
+        setStartError('Failed to connect to contract. Please try reconnecting your wallet.');
+        setContract(null);
+      }
     } else {
       setContract(null);
     }
+    // No event listeners to clean up
+    return undefined;
   }, [isConnected, walletClient]);
 
   const startGame = useCallback(async () => {
@@ -243,7 +252,19 @@ const Game = () => {
       setPoints(0);
       setMultiplier(1);
     } catch (err: unknown) {
-      setStartError(err instanceof Error ? err.message : 'Failed to start game' as any);
+      let message = 'Failed to start game';
+      if (err instanceof Error && err.message) {
+        if (
+          err.message.toLowerCase().includes('insufficient funds') ||
+          err.message.toLowerCase().includes('not enough funds') ||
+          err.message.toLowerCase().includes('insufficient balance')
+        ) {
+          message = 'FUND YOUR WALLET, PAL';
+        } else {
+          message = err.message;
+        }
+      }
+      setStartError(message);
     }
     setStartingGame(false);
   }, [contract]);
@@ -291,18 +312,22 @@ const Game = () => {
       if (contract) {
         try {
           const pool = await contract.getPrizePool();
-          setPrizePool(ethers.utils.formatEther(pool));
+          const formattedPool = ethers.utils.formatEther(pool);
+          console.log('Prize pool:', formattedPool);
+          setPrizePool(formattedPool);
+          
           const score = await contract.highScore();
+          console.log('High score:', score.toString());
           setHighScore(score.toString());
+          
           const holder = await contract.highScoreHolder();
+          console.log('High score holder:', holder);
           setHighScoreHolder(typeof holder === 'string' ? holder : '');
-        } catch (err: unknown) {
+        } catch (err) {
+          console.error('Error fetching stats:', err);
           setPrizePool(null);
           setHighScore(null);
           setHighScoreHolder('');
-          if (err instanceof Error) {
-            // Optionally log err.message
-          }
         }
       }
     };
@@ -314,31 +339,27 @@ const Game = () => {
 
   const handleSubmitScore = async () => {
     if (!playerAddress || !contract) return;
-    
     setSubmittingScore(true);
     setSubmitError(null);
-    
     try {
-      // Get signature from API
-      const { signature, messageHash } = await signScore(
-        playerAddress,
-        points,
-        nonce
-      );
+      // 1. Get signature from backend
+      const response = await fetch('/api/sign-score', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          player: playerAddress,
+          score: points,
+          nonce,
+        }),
+      });
+      const { signature } = await response.json();
 
-      // Verify signature before submitting to contract
-      if (!verifySignature(playerAddress, points, nonce, signature)) {
-        throw new Error('Invalid signature');
-      }
-
-      // Submit score to contract
+      // 2. Submit score to contract
       const tx = await contract.submitScore(points, nonce, signature);
       await tx.wait();
 
-      // Generate new nonce for next game
       setNonce(generateNonce());
     } catch (error) {
-      console.error('Error submitting score:', error);
       setSubmitError(error instanceof Error ? error.message : 'Failed to submit score');
     } finally {
       setSubmittingScore(false);
@@ -392,11 +413,11 @@ const Game = () => {
               width={["60px", "6vw", "90px"]}
               height={["60px", "6vw", "90px"]}
               cursor="inherit"
-              onClick={e => {
+              onClick={(e: React.MouseEvent) => {
                 e.stopPropagation();
                 handleHoleClick(hole.index);
               }}
-              onTouchStart={e => {
+              onTouchStart={(e: React.TouchEvent) => {
                 e.preventDefault();
                 e.stopPropagation();
                 handleHoleClick(hole.index);
@@ -462,13 +483,7 @@ const Game = () => {
             {!isConnected ? (
               <VStack spacing={4} w="full">
                 <Text color="gray.400">Connect your wallet to play</Text>
-                {/* Hidden NativeGlyphConnectButton */}
-                <Box display="none">
-                  <span id="glyph-connect-btn-wrapper">
-                    <NativeGlyphConnectButton />
-                  </span>
-                </Box>
-                <Button
+                <NativeGlyphConnectButton
                   colorScheme="yellow"
                   size="lg"
                   w="full"
@@ -477,18 +492,10 @@ const Game = () => {
                   leftIcon={<img src={GLYPH_ICON_URL} alt="Glyph" style={{ width: 32, height: 32 }} />}
                   _hover={{ transform: 'scale(1.05)' }}
                   transition="all 0.2s"
-                  onClick={() => {
-                    // Find the first button inside the wrapper and click it
-                    const wrapper = document.getElementById('glyph-connect-btn-wrapper');
-                    if (wrapper) {
-                      const btn = wrapper.querySelector('button');
-                      if (btn) (btn as HTMLElement).click();
-                    }
-                  }}
                   aria-label="Connect wallet using Glyph"
                 >
                   CONNECT VIA GLYPH, PAL
-                </Button>
+                </NativeGlyphConnectButton>
               </VStack>
             ) : (
               <Button
@@ -542,7 +549,9 @@ const Game = () => {
                 <Text color="yellow.400">|</Text>
                 <VStack spacing={0}>
                   <Text color="gray.400" fontSize={{ base: "xs", md: "sm" }}>PRIZE POOL</Text>
-                  <Text color="green.400" fontSize={{ base: "lg", md: "xl" }} fontWeight="bold" fontFamily="mono">{DISPLAYED_PRIZE_POOL} $APE</Text>
+                  <Text color="green.400" fontSize={{ base: "lg", md: "xl" }} fontWeight="bold" fontFamily="mono">
+                    {prizePool ? `${Number(prizePool).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} $APE` : '...'}
+                  </Text>
                 </VStack>
               </HStack>
             </Box>
@@ -677,7 +686,7 @@ const Game = () => {
                 YOU WON
               </Text>
               <Text fontSize={{ base: '2xl', md: '3xl' }} color="#00FFB0" fontWeight="extrabold" textShadow="0 0 8px #00FFB0">
-                {DISPLAYED_PRIZE_POOL} $APE
+                {prizePool ? `${Number(prizePool).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} $APE` : '...'}
               </Text>
               <Button
                 as="a"

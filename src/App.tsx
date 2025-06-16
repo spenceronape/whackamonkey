@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { ChakraProvider, extendTheme, Box, Flex, Text, useBreakpointValue, HStack, VStack, useDisclosure, Button } from '@chakra-ui/react'
-import { NativeGlyphConnectButton, GlyphWidget } from '@use-glyph/sdk-react'
+import { NativeGlyphConnectButton, GlyphWidget, GLYPH_ICON_URL } from '@use-glyph/sdk-react'
 import { useAccount, useWalletClient } from 'wagmi'
 import { ethers, Contract } from 'ethers'
 import { WHACK_A_MONKEY_ADDRESS } from './components/contractAddress'
@@ -10,6 +10,9 @@ import '@use-glyph/sdk-react/style.css'
 import { FaXTwitter, FaTelegram, FaGlobe } from 'react-icons/fa6'
 import { FaGithub } from 'react-icons/fa'
 import HallOfFameModal from './components/HallOfFameModal'
+import { createConfig } from '@privy-io/wagmi'
+import { http } from 'viem'
+import { apeChain } from 'viem/chains'
 
 const theme = extendTheme({
   styles: {
@@ -48,13 +51,13 @@ function App() {
   const [highScoreHolder, setHighScoreHolder] = useState<string | null>(null);
   const { isOpen, onOpen, onClose } = useDisclosure();
 
-  // Set up contract (read-only, use walletClient if available, else fallback to default provider)
+  // Set up contract (read-only, use signer if available, else fallback to default provider)
   useEffect(() => {
     let provider;
     if (walletClient) {
-      provider = new ethers.providers.Web3Provider(walletClient as any);
+      provider = new ethers.providers.Web3Provider(walletClient.transport);
     } else {
-      provider = ethers.getDefaultProvider();
+      provider = ethers.providers.getDefaultProvider();
     }
     const c = new Contract(WHACK_A_MONKEY_ADDRESS, WHACK_A_MONKEY_ABI, provider);
     setContract(c);
@@ -83,6 +86,13 @@ function App() {
     const interval = setInterval(fetchStats, 10000);
     return () => clearInterval(interval);
   }, [contract]);
+
+  const config = createConfig({
+    chains: [apeChain],
+    transports: {
+      [apeChain.id]: http('https://rpc.apechain.com'),
+    },
+  });
 
   return (
     <ChakraProvider theme={theme}>
@@ -113,6 +123,8 @@ function App() {
                 textShadow="2px 2px 0 #6d1a7b, 0 2px 8px #000"
                 zIndex={2}
                 position="relative"
+                cursor="pointer"
+                onClick={() => window.location.reload()}
               >
                 Whack <Box as="span" color="#FFD600" position="relative" zIndex={2}>A</Box> Monkey
               </Text>
