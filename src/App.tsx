@@ -62,14 +62,13 @@ function App() {
 
   // Set up contract (read-only, use walletClient if available, else fallback to default provider)
   useEffect(() => {
-    let provider;
     if (walletClient) {
-      provider = new ethers.providers.Web3Provider(walletClient as any);
+      const provider = new ethers.providers.Web3Provider(walletClient as any);
+      const c = new Contract(WHACK_A_MONKEY_ADDRESS, WHACK_A_MONKEY_ABI, provider);
+      setContract(c);
     } else {
-      provider = ethers.getDefaultProvider();
+      setContract(null);
     }
-    const c = new Contract(WHACK_A_MONKEY_ADDRESS, WHACK_A_MONKEY_ABI, provider);
-    setContract(c);
   }, [walletClient]);
 
   // Fetch prize pool and high score from contract
