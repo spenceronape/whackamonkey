@@ -92,6 +92,7 @@ const Game = () => {
   const [submittingScore, setSubmittingScore] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [nonce, setNonce] = useState<number>(generateNonce());
+  const [isWhacking, setIsWhacking] = useState(false);
 
   // Preload sounds
   const hitAudioRefs = useRef<HTMLAudioElement[]>([]);
@@ -703,6 +704,36 @@ const Game = () => {
         )
     }
   }
+
+  // Add keyboard event handlers
+  useEffect(() => {
+    const handleKeyDown = (e: Event): void => {
+      const event = e as KeyboardEvent;
+      if (event.key === ' ' || event.key === 'Spacebar') {
+        event.preventDefault();
+        if (!isWhacking) {
+          setIsWhacking(true);
+          handleHoleClick(0); // Assuming the first hole is clicked
+        }
+      }
+    };
+
+    const handleKeyUp = (e: Event): void => {
+      const event = e as KeyboardEvent;
+      if (event.key === ' ' || event.key === 'Spacebar') {
+        event.preventDefault();
+        setIsWhacking(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, [isWhacking, handleHoleClick]);
 
   return (
     <Box minH="calc(100vh - 80px)" display="flex" flexDirection="column" justifyContent="center" alignItems="center" bg="#1D0838" flexGrow={1} mt={{ base: "-5vh", md: "-15vh" }}>
