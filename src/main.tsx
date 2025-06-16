@@ -44,11 +44,10 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       autoConnect={false}
       reconnectOnMount={false}
       disableAutoConnect={true}
-      disableInjectedProvider={false}
+      disableInjectedProvider={true}
+      // Add these options to handle event listeners
       maxListeners={20}
       cleanupOnUnmount={true}
-      storageKey="whackamonkey-wallet"
-      storageType="localStorage"
     >
       <ChakraProvider>
         <App />

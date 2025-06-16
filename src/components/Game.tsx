@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Box, VStack, HStack, Text, Button, Image, IconButton, Heading, UnorderedList, ListItem } from '@chakra-ui/react'
 import { useAccount, useWalletClient } from 'wagmi'
-import { GlyphWidget } from '@use-glyph/sdk-react'
+import { NativeGlyphConnectButton, GLYPH_ICON_URL } from '@use-glyph/sdk-react'
 import { FaVolumeMute, FaVolumeUp, FaTwitter } from 'react-icons/fa'
 import Confetti from 'react-confetti'
 import { ethers } from 'ethers'
@@ -450,52 +450,33 @@ const Game = () => {
             {!isConnected ? (
               <VStack spacing={4} w="full">
                 <Text color="gray.400">Connect your wallet to play</Text>
-                <Box 
-                  className="glyph-widget-horizontal" 
+                {/* Hidden NativeGlyphConnectButton */}
+                <Box display="none">
+                  <span id="glyph-connect-btn-wrapper">
+                    <NativeGlyphConnectButton />
+                  </span>
+                </Box>
+                <Button
+                  colorScheme="yellow"
+                  size="lg"
                   w="full"
-                  sx={{
-                    '.glyph-widget': {
-                      width: '100%',
-                      height: '60px',
-                      fontSize: 'xl',
-                      backgroundColor: '#FFD600',
-                      color: '#1D0838',
-                      fontWeight: 'bold',
-                      borderRadius: 'md',
-                      _hover: {
-                        transform: 'scale(1.05)',
-                        transition: 'all 0.2s'
-                      }
+                  h={{ base: "48px", md: "60px" }}
+                  fontSize={{ base: "md", md: "xl" }}
+                  leftIcon={<img src={GLYPH_ICON_URL} alt="Glyph" style={{ width: 32, height: 32 }} />}
+                  _hover={{ transform: 'scale(1.05)' }}
+                  transition="all 0.2s"
+                  onClick={() => {
+                    // Find the first button inside the wrapper and click it
+                    const wrapper = document.getElementById('glyph-connect-btn-wrapper');
+                    if (wrapper) {
+                      const btn = wrapper.querySelector('button');
+                      if (btn) (btn as HTMLElement).click();
                     }
                   }}
+                  aria-label="Connect wallet using Glyph"
                 >
-                  <GlyphWidget
-                    buttonProps={{
-                      showAvatar: false,
-                      showBalance: true,
-                      showUsername: false,
-                      variant: 'connect',
-                      size: 'lg',
-                      onConnect: () => {
-                        // Force a re-render after connection
-                        window.location.reload();
-                      },
-                      style: {
-                        width: '100%',
-                        height: '60px',
-                        fontSize: 'xl',
-                        backgroundColor: '#FFD600',
-                        color: '#1D0838',
-                        fontWeight: 'bold',
-                        borderRadius: 'md',
-                        _hover: {
-                          transform: 'scale(1.05)',
-                          transition: 'all 0.2s'
-                        }
-                      }
-                    }}
-                  />
-                </Box>
+                  CONNECT VIA GLYPH, PAL
+                </Button>
               </VStack>
             ) : (
               <Button
