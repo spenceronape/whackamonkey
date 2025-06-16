@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ChakraProvider, extendTheme, Box, Flex, Text, HStack, VStack, useDisclosure, Button } from '@chakra-ui/react'
-import { NativeGlyphConnectButton, GlyphWidget, GlyphWalletProvider } from '@use-glyph/sdk-react'
+import { NativeGlyphConnectButton, GlyphWidget, GlyphWalletProvider, LogoutButton } from '@use-glyph/sdk-react'
 import { useAccount, useWalletClient } from 'wagmi'
 import { WagmiConfig, createConfig, http } from 'wagmi'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -169,9 +169,7 @@ function App() {
                   <Button colorScheme="yellow" variant="outline" size="sm" onClick={onOpen}>
                     Hall of Fame
                   </Button>
-                  {!isConnected ? (
-                    <NativeGlyphConnectButton />
-                  ) : (
+                  {isConnected && (
                     <Box>
                       <GlyphWidget
                         buttonProps={{
@@ -188,6 +186,11 @@ function App() {
                         }}
                       />
                     </Box>
+                  )}
+                  {!isConnected ? (
+                    <NativeGlyphConnectButton />
+                  ) : (
+                    <LogoutButton />
                   )}
                 </HStack>
               </Flex>
