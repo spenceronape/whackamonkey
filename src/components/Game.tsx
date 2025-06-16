@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Box, VStack, HStack, Text, Button, Image, IconButton, Heading, UnorderedList, ListItem } from '@chakra-ui/react'
 import { useAccount, useWalletClient } from 'wagmi'
-import { NativeGlyphConnectButton, GLYPH_ICON_URL } from '@use-glyph/sdk-react'
+import { NativeGlyphConnectButton, GLYPH_ICON_URL, useNativeGlyphConnection } from '@use-glyph/sdk-react'
 import { FaVolumeMute, FaVolumeUp, FaTwitter } from 'react-icons/fa'
 import Confetti from 'react-confetti'
 import { ethers } from 'ethers'
@@ -81,6 +81,7 @@ const Game = () => {
   const [misses, setMisses] = useState(0)
   const [points, setPoints] = useState(0)
   const { address: playerAddress, isConnected } = useAccount()
+  const { isConnected: isGlyphConnected } = useNativeGlyphConnection()
   const { data: walletClient } = useWalletClient()
   const gameAreaRef = useRef<HTMLDivElement>(null);
   const [muted, setMuted] = useState(false);
@@ -476,6 +477,31 @@ const Game = () => {
                   aria-label="Connect wallet using Glyph"
                 >
                   CONNECT VIA GLYPH, PAL
+                </Button>
+              </VStack>
+            ) : !isGlyphConnected ? (
+              <VStack spacing={4} w="full">
+                <Text color="yellow.400">ONE MORE STEP!</Text>
+                <Button
+                  colorScheme="yellow"
+                  size="lg"
+                  w="full"
+                  h={{ base: "48px", md: "60px" }}
+                  fontSize={{ base: "md", md: "xl" }}
+                  leftIcon={<img src={GLYPH_ICON_URL} alt="Glyph" style={{ width: 32, height: 32 }} />}
+                  _hover={{ transform: 'scale(1.05)' }}
+                  transition="all 0.2s"
+                  onClick={() => {
+                    // Find the first button inside the wrapper and click it
+                    const wrapper = document.getElementById('glyph-connect-btn-wrapper');
+                    if (wrapper) {
+                      const btn = wrapper.querySelector('button');
+                      if (btn) (btn as HTMLElement).click();
+                    }
+                  }}
+                  aria-label="Sign in with Glyph"
+                >
+                  SIGN IN, PAL
                 </Button>
               </VStack>
             ) : (
