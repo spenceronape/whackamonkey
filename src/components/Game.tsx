@@ -707,7 +707,7 @@ const Game = () => {
 
   // Add keyboard event handlers
   useEffect(() => {
-    const handleKeyDown = (e: unknown) => {
+    const handleKeyDown = (e: Event): void => {
       const event = e as KeyboardEvent;
       if (event.key === ' ' || event.key === 'Spacebar') {
         event.preventDefault();
@@ -718,7 +718,7 @@ const Game = () => {
       }
     };
 
-    const handleKeyUp = (e: unknown) => {
+    const handleKeyUp = (e: Event): void => {
       const event = e as KeyboardEvent;
       if (event.key === ' ' || event.key === 'Spacebar') {
         event.preventDefault();
@@ -726,12 +726,12 @@ const Game = () => {
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown as EventListener);
-    window.addEventListener('keyup', handleKeyUp as EventListener);
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
 
     return () => {
-      window.removeEventListener('keydown', handleKeyDown as EventListener);
-      window.removeEventListener('keyup', handleKeyUp as EventListener);
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
     };
   }, [isWhacking, handleHoleClick]);
 
