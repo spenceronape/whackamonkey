@@ -1,9 +1,10 @@
+import { NextApiRequest, NextApiResponse } from 'next';
 import { ethers } from "ethers";
 
 const PRIVATE_KEY = process.env.SIGNER_PRIVATE_KEY;
-const wallet = new ethers.Wallet(PRIVATE_KEY);
+const wallet = new ethers.Wallet(PRIVATE_KEY!);
 
-export default async function handler(req, res) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
