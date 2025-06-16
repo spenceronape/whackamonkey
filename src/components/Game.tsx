@@ -81,8 +81,7 @@ const Game = () => {
   const [misses, setMisses] = useState(0)
   const [points, setPoints] = useState(0)
   const { address: playerAddress, isConnected } = useAccount()
-  const { isConnected: isGlyphConnected } = useNativeGlyphConnection()
-  const { authenticated, login } = useGlyph()
+  const { isGlyphSignedIn, login } = useGlyph()
   const { data: walletClient } = useWalletClient()
   const gameAreaRef = useRef<HTMLDivElement>(null);
   const [muted, setMuted] = useState(false);
@@ -481,7 +480,7 @@ const Game = () => {
                   CONNECT VIA GLYPH, PAL
                 </Button>
               </VStack>
-            ) : !authenticated ? (
+            ) : !isGlyphSignedIn ? (
               <VStack spacing={4} w="full">
                 <Text color="yellow.400">ONE MORE STEP!</Text>
                 <Button

@@ -1,32 +1,62 @@
-import { Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalCloseButton, VStack, Text, Spinner } from '@chakra-ui/react'
-import { useContractRead } from 'wagmi'
-import { WHACK_A_MONKEY_ADDRESS } from './contractAddress'
-import WHACK_A_MONKEY_ABI from './WhackAMonkeyABI.json'
+import { Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalCloseButton, VStack, Text, Spinner, Table, Thead, Tbody, Tr, Th, Td } from '@chakra-ui/react'
 import { ethers } from 'ethers'
+import { useEffect, useState } from 'react'
 
 interface HallOfFameModalProps {
   isOpen: boolean
   onClose: () => void
 }
 
+interface Winner {
+  player: string
+  score: number
+  prizeAmount: string
+  timestamp: number
+}
+
 const HallOfFameModal = ({ isOpen, onClose }: HallOfFameModalProps) => {
-  const { data: highScore, isLoading: isLoadingScore } = useContractRead({
-    address: WHACK_A_MONKEY_ADDRESS,
-    abi: WHACK_A_MONKEY_ABI,
-    functionName: 'highScore',
-  })
+  const [winners, setWinners] = useState<Winner[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  const { data: highScoreHolder, isLoading: isLoadingHolder } = useContractRead({
-    address: WHACK_A_MONKEY_ADDRESS,
-    abi: WHACK_A_MONKEY_ABI,
-    functionName: 'highScoreHolder',
-  })
+  useEffect(() => {
+    const fetchWinners = async () => {
+      try {
+        const response = await fetch('https://api.goldsky.com/api/public/project_cm8grmwci3q4001w1e6mz7wzu/subgraphs/whack-a-monkey/1.0.0/gn', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            query: `
+              {
+                prizeClaimeds(first: 10, orderBy: timestamp, orderDirection: desc) {
+                  player
+                  score
+                  prizeAmount
+                  timestamp
+                }
+              }
+            `
+          })
+        });
 
-  const { data: prizePool, isLoading: isLoadingPool } = useContractRead({
-    address: WHACK_A_MONKEY_ADDRESS,
-    abi: WHACK_A_MONKEY_ABI,
-    functionName: 'getPrizePool',
-  })
+        const data = await response.json();
+        if (data.errors) {
+          throw new Error('Failed to fetch winners');
+        }
+        setWinners(data.data.prizeClaimeds);
+      } catch (err) {
+        setError('COMING SOON');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (isOpen) {
+      fetchWinners();
+    }
+  }, [isOpen]);
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="md">
@@ -35,17 +65,40 @@ const HallOfFameModal = ({ isOpen, onClose }: HallOfFameModalProps) => {
         <ModalHeader color="yellow.400">Hall of Fame</ModalHeader>
         <ModalCloseButton color="yellow.400" />
         <ModalBody pb={6}>
-          <VStack spacing={4} align="stretch">
-            {isLoadingScore || isLoadingHolder || isLoadingPool ? (
+          {isLoading ? (
+            <VStack spacing={4} align="center">
               <Spinner color="yellow.400" />
-            ) : (
-              <>
-                <Text color="gray.300">Current High Score: {highScore?.toString() || '0'}</Text>
-                <Text color="gray.300">Holder: {highScoreHolder?.toString() || 'None'}</Text>
-                <Text color="gray.300">Prize Pool: {ethers.utils.formatEther(prizePool?.toString() || '0')} $APE</Text>
-              </>
-            )}
-          </VStack>
+              <Text color="gray.300">Loading winners...</Text>
+            </VStack>
+          ) : error ? (
+            <VStack spacing={4} align="center">
+              <Text color="yellow.400" fontSize="2xl" fontWeight="bold">{error}</Text>
+              <Text color="gray.300">Check back soon to see the champions!</Text>
+            </VStack>
+          ) : (
+            <VStack spacing={4} align="stretch">
+              <Table variant="simple" colorScheme="yellow">
+                <Thead>
+                  <Tr>
+                    <Th color="yellow.400">Player</Th>
+                    <Th color="yellow.400" isNumeric>Score</Th>
+                    <Th color="yellow.400" isNumeric>Prize</Th>
+                    <Th color="yellow.400">Date</Th>
+                  </Tr>
+                </Thead>
+                <Tbody>
+                  {winners.map((winner, index) => (
+                    <Tr key={index}>
+                      <Td color="gray.300">{`${winner.player.slice(0, 6)}...${winner.player.slice(-4)}`}</Td>
+                      <Td color="gray.300" isNumeric>{winner.score}</Td>
+                      <Td color="gray.300" isNumeric>{ethers.utils.formatEther(winner.prizeAmount)} $APE</Td>
+                      <Td color="gray.300">{new Date(winner.timestamp * 1000).toLocaleDateString()}</Td>
+                    </Tr>
+                  ))}
+                </Tbody>
+              </Table>
+            </VStack>
+          )}
         </ModalBody>
       </ModalContent>
     </Modal>
