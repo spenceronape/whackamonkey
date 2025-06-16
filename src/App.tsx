@@ -128,6 +128,9 @@ function App() {
                       textShadow="2px 2px 0 #6d1a7b, 0 2px 8px #000"
                       zIndex={2}
                       position="relative"
+                      cursor="pointer"
+                      onClick={() => window.location.reload()}
+                      _hover={{ transform: 'scale(1.05)', transition: 'all 0.2s' }}
                     >
                       Whack <Box as="span" color="#FFD600" position="relative" zIndex={2}>A</Box> Monkey
                     </Text>
