@@ -6,9 +6,10 @@ import { ethers, Contract } from 'ethers'
 import { WHACK_A_MONKEY_ADDRESS } from './components/contractAddress'
 import WHACK_A_MONKEY_ABI from './components/WhackAMonkeyABI.json'
 import Game from './components/Game'
-import '@use-glyph/sdk-react/style.css';
-import { FaXTwitter, FaTelegram, FaGlobe } from 'react-icons/fa6';
-import HallOfFameModal from './components/HallOfFameModal';
+import '@use-glyph/sdk-react/style.css'
+import { FaXTwitter, FaTelegram, FaGlobe } from 'react-icons/fa6'
+import { FaGithub } from 'react-icons/fa'
+import HallOfFameModal from './components/HallOfFameModal'
 
 const theme = extendTheme({
   styles: {
@@ -188,6 +189,9 @@ function App() {
               </Box>
               <Box as="a" href="https://its.mistermonkee.com" target="_blank" rel="noopener noreferrer" aria-label="Web">
                 <FaGlobe size={28} color="#FFD600" />
+              </Box>
+              <Box as="a" href="https://github.com/spenceronape/whackamonkey/" target="_blank" rel="noopener noreferrer" aria-label="GitHub">
+                <FaGithub size={28} color="#FFD600" />
               </Box>
             </HStack>
           </Flex>

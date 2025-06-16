@@ -94,7 +94,7 @@ const Game = () => {
   const [startError, setStartError] = useState(null);
   const [prizePool, setPrizePool] = useState<string | null>(null);
   const [highScore, setHighScore] = useState<string | null>(null);
-  const [highScoreHolder, setHighScoreHolder] = useState<string | null>(null);
+  const [highScoreHolder, setHighScoreHolder] = useState<string>('');
 
   // Preload sounds
   const hitAudioRefs = useRef<HTMLAudioElement[]>([]);
@@ -224,7 +224,7 @@ const Game = () => {
     }
   }, [isConnected, walletClient]);
 
-  const { submitScore, loading: submittingScore, error: submitError } = useSubmitScore(contract, playerAddress);
+  const { submitScore, loading: submittingScore, error: submitError } = useSubmitScore(contract, playerAddress ? playerAddress.toString() : '');
 
   const startGame = useCallback(async () => {
     setStartError(null);
@@ -241,8 +241,8 @@ const Game = () => {
       setMisses(0);
       setPoints(0);
       setMultiplier(1);
-    } catch (err) {
-      setStartError(err.message || 'Failed to start game');
+    } catch (err: unknown) {
+      setStartError(err instanceof Error ? err.message : 'Failed to start game' as any);
     }
     setStartingGame(false);
   }, [contract]);
@@ -294,15 +294,21 @@ const Game = () => {
           const score = await contract.highScore();
           setHighScore(score.toString());
           const holder = await contract.highScoreHolder();
-          setHighScoreHolder(holder);
-        } catch (err) {
+          setHighScoreHolder(typeof holder === 'string' ? holder : '');
+        } catch (err: unknown) {
           setPrizePool(null);
           setHighScore(null);
-          setHighScoreHolder(null);
+          setHighScoreHolder('');
+          if (err instanceof Error) {
+            // Optionally log err.message
+          }
         }
       }
     };
     fetchStats();
+    // Optionally, poll every 10s for live updates
+    const interval = setInterval(fetchStats, 10000);
+    return () => clearInterval(interval);
   }, [contract]);
 
   const renderGameBoard = () => {

@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { ethers } from "ethers";
 
-export function useSubmitScore(contract, player) {
+export function useSubmitScore(contract: any, player: string) {
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
 
-  async function submitScore(score) {
+  async function submitScore(score: number) {
     setLoading(true);
     setError(null);
     try {
@@ -27,10 +27,11 @@ export function useSubmitScore(contract, player) {
       await tx.wait();
       setLoading(false);
       return { success: true };
-    } catch (err) {
-      setError(err.message || "Unknown error");
+    } catch (err: unknown) {
+      if (err instanceof Error) setError(err.message);
+      else setError('Unknown error');
       setLoading(false);
-      return { success: false, error: err.message };
+      return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
     }
   }
 

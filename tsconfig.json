@@ -9,7 +9,8 @@
     "jsx": "react-jsx",
     "strict": true,
     "allowJs": true,
-    "checkJs": false
+    "checkJs": false,
+    "resolveJsonModule": true
   },
   "include": ["src", "api"],
   "exclude": ["node_modules", "dist"]

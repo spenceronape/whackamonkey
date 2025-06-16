@@ -39,8 +39,21 @@ function formatDate(ts: string) {
   return d.toLocaleDateString() + ' ' + d.toLocaleTimeString();
 }
 
-const HallOfFameModal = ({ isOpen, onClose }) => {
-  const [entries, setEntries] = useState<any[]>([]);
+type HallOfFameModalProps = {
+  isOpen: boolean;
+  onClose: () => void;
+};
+
+type PrizeClaim = {
+  id: string;
+  winner: string;
+  amount: string;
+  score: string;
+  timestamp: string;
+};
+
+const HallOfFameModal = ({ isOpen, onClose }: HallOfFameModalProps) => {
+  const [entries, setEntries] = useState<PrizeClaim[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -58,8 +71,8 @@ const HallOfFameModal = ({ isOpen, onClose }) => {
         setEntries(data.data.prizeClaims);
         setLoading(false);
       })
-      .catch(err => {
-        setError('Failed to fetch Hall of Fame data.');
+      .catch((err: unknown) => {
+        setEntries([]);
         setLoading(false);
       });
   }, [isOpen]);
@@ -73,8 +86,6 @@ const HallOfFameModal = ({ isOpen, onClose }) => {
         <ModalBody>
           {loading ? (
             <VStack py={8}><Spinner size="lg" /></VStack>
-          ) : error ? (
-            <Text color="red.300">{error}</Text>
           ) : (
             <Box overflowX="auto">
               <Table variant="simple" size="sm">
@@ -97,7 +108,7 @@ const HallOfFameModal = ({ isOpen, onClose }) => {
                   ))}
                 </Tbody>
               </Table>
-              {entries.length === 0 && <Text color="gray.400" py={4}>No winners yet!</Text>}
+              {entries.length === 0 && <Text color="gray.400" py={4}>Coming Soon!</Text>}
             </Box>
           )}
         </ModalBody>
