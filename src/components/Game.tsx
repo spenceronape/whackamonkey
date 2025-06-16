@@ -8,8 +8,6 @@ import { ethers } from 'ethers'
 import WHACK_A_MONKEY_ABI from './WhackAMonkeyABI.json'
 import { WHACK_A_MONKEY_ADDRESS } from './contractAddress'
 import { Contract } from 'ethers'
-import { createPublicClient, http } from 'viem'
-import { apeChain } from 'viem/chains'
 import { signScore, generateNonce, verifySignature } from '../utils/api'
 
 // Game constants

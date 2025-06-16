@@ -2,6 +2,7 @@ import { Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalCloseBu
 import { useContractRead } from 'wagmi'
 import { WHACK_A_MONKEY_ADDRESS } from './contractAddress'
 import WHACK_A_MONKEY_ABI from './WhackAMonkeyABI.json'
+import { ethers } from 'ethers'
 
 interface HallOfFameModalProps {
   isOpen: boolean
@@ -39,9 +40,9 @@ const HallOfFameModal = ({ isOpen, onClose }: HallOfFameModalProps) => {
               <Spinner color="yellow.400" />
             ) : (
               <>
-                <Text color="gray.300">Current High Score: {highScore?.toString()}</Text>
-                <Text color="gray.300">Holder: {highScoreHolder}</Text>
-                <Text color="gray.300">Prize Pool: {ethers.utils.formatEther(prizePool || '0')} $APE</Text>
+                <Text color="gray.300">Current High Score: {highScore?.toString() || '0'}</Text>
+                <Text color="gray.300">Holder: {highScoreHolder?.toString() || 'None'}</Text>
+                <Text color="gray.300">Prize Pool: {ethers.utils.formatEther(prizePool?.toString() || '0')} $APE</Text>
               </>
             )}
           </VStack>
