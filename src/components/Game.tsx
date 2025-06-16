@@ -492,7 +492,14 @@ const Game = () => {
                   leftIcon={<img src={GLYPH_ICON_URL} alt="Glyph" style={{ width: 32, height: 32 }} />}
                   _hover={{ transform: 'scale(1.05)' }}
                   transition="all 0.2s"
-                  onClick={() => signIn()}
+                  onClick={() => {
+                    setIsSigningIn(true);
+                    const wrapper = document.getElementById('glyph-connect-btn-wrapper');
+                    if (wrapper) {
+                      const btn = wrapper.querySelector('button');
+                      if (btn) (btn as HTMLElement).click();
+                    }
+                  }}
                   isLoading={isSigningIn}
                   aria-label="Sign in with Glyph"
                 >
