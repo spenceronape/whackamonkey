@@ -5,12 +5,12 @@ import { NativeGlyphConnectButton, GLYPH_ICON_URL } from '@use-glyph/sdk-react'
 import { FaVolumeMute, FaVolumeUp, FaTwitter } from 'react-icons/fa'
 import Confetti from 'react-confetti'
 import { ethers } from 'ethers'
-import { useSubmitScore } from './useSubmitScore'
 import WHACK_A_MONKEY_ABI from './WhackAMonkeyABI.json'
 import { WHACK_A_MONKEY_ADDRESS } from './contractAddress'
 import { Contract } from 'ethers'
 import { createPublicClient, http } from 'viem'
 import { apeChain } from 'viem/chains'
+import { signScore, generateNonce, verifySignature } from '../utils/api'
 
 // Game constants
 const GAME_DURATION = 60 // seconds
@@ -91,10 +91,13 @@ const Game = () => {
   const MAX_MULTIPLIER = 5;
   const [contract, setContract] = useState<Contract | null>(null);
   const [startingGame, setStartingGame] = useState(false);
-  const [startError, setStartError] = useState(null);
+  const [startError, setStartError] = useState<string | null>(null);
   const [prizePool, setPrizePool] = useState<string | null>(null);
   const [highScore, setHighScore] = useState<string | null>(null);
   const [highScoreHolder, setHighScoreHolder] = useState<string>('');
+  const [submittingScore, setSubmittingScore] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [nonce, setNonce] = useState<number>(generateNonce());
 
   // Preload sounds
   const hitAudioRefs = useRef<HTMLAudioElement[]>([]);
@@ -224,8 +227,6 @@ const Game = () => {
     }
   }, [isConnected, walletClient]);
 
-  const { submitScore, loading: submittingScore, error: submitError } = useSubmitScore(contract, playerAddress ? playerAddress.toString() : '');
-
   const startGame = useCallback(async () => {
     setStartError(null);
     if (!contract) return;
@@ -310,6 +311,39 @@ const Game = () => {
     const interval = setInterval(fetchStats, 10000);
     return () => clearInterval(interval);
   }, [contract]);
+
+  const handleSubmitScore = async () => {
+    if (!playerAddress || !contract) return;
+    
+    setSubmittingScore(true);
+    setSubmitError(null);
+    
+    try {
+      // Get signature from API
+      const { signature, messageHash } = await signScore(
+        playerAddress,
+        points,
+        nonce
+      );
+
+      // Verify signature before submitting to contract
+      if (!verifySignature(playerAddress, points, nonce, signature)) {
+        throw new Error('Invalid signature');
+      }
+
+      // Submit score to contract
+      const tx = await contract.submitScore(points, nonce, signature);
+      await tx.wait();
+
+      // Generate new nonce for next game
+      setNonce(generateNonce());
+    } catch (error) {
+      console.error('Error submitting score:', error);
+      setSubmitError(error instanceof Error ? error.message : 'Failed to submit score');
+    } finally {
+      setSubmittingScore(false);
+    }
+  };
 
   const renderGameBoard = () => {
     return (
@@ -670,9 +704,7 @@ const Game = () => {
                 boxShadow="0 0 16px #FFD600"
                 aria-label="Claim your prize"
                 isLoading={submittingScore}
-                onClick={async () => {
-                  await submitScore(points);
-                }}
+                onClick={handleSubmitScore}
                 isDisabled={!contract || submittingScore}
               >
                 {submittingScore ? 'Submitting...' : 'Claim Prize'}
