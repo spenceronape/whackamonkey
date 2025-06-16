@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Box, VStack, HStack, Text, Button, Image, IconButton, Heading, UnorderedList, ListItem } from '@chakra-ui/react'
 import { useAccount, useWalletClient } from 'wagmi'
-import { NativeGlyphConnectButton, GLYPH_ICON_URL, useNativeGlyphConnection, useNativeGlyphSignIn } from '@use-glyph/sdk-react'
+import { NativeGlyphConnectButton, GLYPH_ICON_URL, useNativeGlyphConnection } from '@use-glyph/sdk-react'
 import { FaVolumeMute, FaVolumeUp, FaTwitter } from 'react-icons/fa'
 import Confetti from 'react-confetti'
 import { ethers } from 'ethers'
@@ -82,7 +82,7 @@ const Game = () => {
   const [points, setPoints] = useState(0)
   const { address: playerAddress, isConnected } = useAccount()
   const { isConnected: isGlyphConnected } = useNativeGlyphConnection()
-  const { signIn, isSigningIn } = useNativeGlyphSignIn()
+  const [isSigningIn, setIsSigningIn] = useState(false)
   const { data: walletClient } = useWalletClient()
   const gameAreaRef = useRef<HTMLDivElement>(null);
   const [muted, setMuted] = useState(false);
@@ -497,7 +497,11 @@ const Game = () => {
                     const wrapper = document.getElementById('glyph-connect-btn-wrapper');
                     if (wrapper) {
                       const btn = wrapper.querySelector('button');
-                      if (btn) (btn as HTMLElement).click();
+                      if (btn) {
+                        (btn as HTMLElement).click();
+                        // Reset signing state after a short delay
+                        setTimeout(() => setIsSigningIn(false), 2000);
+                      }
                     }
                   }}
                   isLoading={isSigningIn}
