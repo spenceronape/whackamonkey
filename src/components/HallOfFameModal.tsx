@@ -1,120 +1,55 @@
-import React, { useEffect, useState } from 'react';
-import {
-  Modal,
-  ModalOverlay,
-  ModalContent,
-  ModalHeader,
-  ModalCloseButton,
-  ModalBody,
-  Table,
-  Thead,
-  Tbody,
-  Tr,
-  Th,
-  Td,
-  Text,
-  Spinner,
-  VStack,
-  Box
-} from '@chakra-ui/react';
+import { Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalCloseButton, VStack, Text, Spinner } from '@chakra-ui/react'
+import { useContractRead } from 'wagmi'
+import { WHACK_A_MONKEY_ADDRESS } from './contractAddress'
+import WHACK_A_MONKEY_ABI from './WhackAMonkeyABI.json'
+import { ethers } from 'ethers'
 
-const SUBGRAPH_URL = 'https://api.goldsky.com/api/public/project_cm8grmwci3q4001w1e6mz7wzu/subgraphs/whack-a-monkey/1.0.0/gn';
-
-const HOF_QUERY = `{
-  prizeClaims(first: 10, orderBy: timestamp, orderDirection: desc) {
-    id
-    winner
-    amount
-    score
-    timestamp
-  }
-}`;
-
-function formatAddress(addr: string) {
-  return addr.slice(0, 6) + '...' + addr.slice(-4);
+interface HallOfFameModalProps {
+  isOpen: boolean
+  onClose: () => void
 }
-
-function formatDate(ts: string) {
-  const d = new Date(parseInt(ts) * 1000);
-  return d.toLocaleDateString() + ' ' + d.toLocaleTimeString();
-}
-
-type HallOfFameModalProps = {
-  isOpen: boolean;
-  onClose: () => void;
-};
-
-type PrizeClaim = {
-  id: string;
-  winner: string;
-  amount: string;
-  score: string;
-  timestamp: string;
-};
 
 const HallOfFameModal = ({ isOpen, onClose }: HallOfFameModalProps) => {
-  const [entries, setEntries] = useState<PrizeClaim[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { data: highScore, isLoading: isLoadingScore } = useContractRead({
+    address: WHACK_A_MONKEY_ADDRESS,
+    abi: WHACK_A_MONKEY_ABI,
+    functionName: 'highScore',
+  })
 
-  useEffect(() => {
-    if (!isOpen) return;
-    setLoading(true);
-    setError(null);
-    fetch(SUBGRAPH_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query: HOF_QUERY })
-    })
-      .then(res => res.json())
-      .then(data => {
-        setEntries(data.data.prizeClaims);
-        setLoading(false);
-      })
-      .catch((err: unknown) => {
-        setEntries([]);
-        setLoading(false);
-      });
-  }, [isOpen]);
+  const { data: highScoreHolder, isLoading: isLoadingHolder } = useContractRead({
+    address: WHACK_A_MONKEY_ADDRESS,
+    abi: WHACK_A_MONKEY_ABI,
+    functionName: 'highScoreHolder',
+  })
+
+  const { data: prizePool, isLoading: isLoadingPool } = useContractRead({
+    address: WHACK_A_MONKEY_ADDRESS,
+    abi: WHACK_A_MONKEY_ABI,
+    functionName: 'getPrizePool',
+  })
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="xl" isCentered>
+    <Modal isOpen={isOpen} onClose={onClose} size="md">
       <ModalOverlay />
-      <ModalContent bg="#1D0838" color="yellow.100">
-        <ModalHeader fontWeight="bold">Hall of Fame</ModalHeader>
-        <ModalCloseButton />
-        <ModalBody>
-          {loading ? (
-            <VStack py={8}><Spinner size="lg" /></VStack>
-          ) : (
-            <Box overflowX="auto">
-              <Table variant="simple" size="sm">
-                <Thead>
-                  <Tr>
-                    <Th color="yellow.200">Winner</Th>
-                    <Th color="yellow.200">Score</Th>
-                    <Th color="yellow.200">Prize</Th>
-                    <Th color="yellow.200">Date</Th>
-                  </Tr>
-                </Thead>
-                <Tbody>
-                  {entries.map((e) => (
-                    <Tr key={e.id}>
-                      <Td fontFamily="mono">{formatAddress(e.winner)}</Td>
-                      <Td>{e.score}</Td>
-                      <Td>{parseFloat(e.amount).toFixed(2)} $APE</Td>
-                      <Td>{formatDate(e.timestamp)}</Td>
-                    </Tr>
-                  ))}
-                </Tbody>
-              </Table>
-              {entries.length === 0 && <Text color="gray.400" py={4}>Coming Soon!</Text>}
-            </Box>
-          )}
+      <ModalContent bg="#1D0838" border="2px solid" borderColor="yellow.400">
+        <ModalHeader color="yellow.400">Hall of Fame</ModalHeader>
+        <ModalCloseButton color="yellow.400" />
+        <ModalBody pb={6}>
+          <VStack spacing={4} align="stretch">
+            {isLoadingScore || isLoadingHolder || isLoadingPool ? (
+              <Spinner color="yellow.400" />
+            ) : (
+              <>
+                <Text color="gray.300">Current High Score: {highScore?.toString() || '0'}</Text>
+                <Text color="gray.300">Holder: {highScoreHolder?.toString() || 'None'}</Text>
+                <Text color="gray.300">Prize Pool: {ethers.utils.formatEther(prizePool?.toString() || '0')} $APE</Text>
+              </>
+            )}
+          </VStack>
         </ModalBody>
       </ModalContent>
     </Modal>
-  );
-};
+  )
+}
 
-export default HallOfFameModal; 
+export default HallOfFameModal 

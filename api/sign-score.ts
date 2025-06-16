@@ -1,15 +1,8 @@
 import { ethers } from "ethers";
-import type { Request, Response } from 'express';
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-// Use a default test key for development if SIGNER_PRIVATE_KEY is not set
-const PRIVATE_KEY = process.env.SIGNER_PRIVATE_KEY || '0x0000000000000000000000000000000000000000000000000000000000000001';
-console.log('Environment variables:', {
-  SIGNER_PRIVATE_KEY: PRIVATE_KEY ? 'Present' : 'Missing',
-  NODE_ENV: process.env.NODE_ENV
-});
-
-const wallet = new ethers.Wallet(PRIVATE_KEY);
-console.log('Wallet address:', wallet.address);
+const PRIVATE_KEY = process.env.SIGNER_PRIVATE_KEY;
+const wallet = new ethers.Wallet(PRIVATE_KEY!);
 
 // Maximum allowed score to prevent cheating
 const MAX_SCORE = 1000;
@@ -19,7 +12,7 @@ const MIN_SUBMISSION_INTERVAL = 60;
 // In-memory cache for recent submissions
 const recentSubmissions = new Map<string, number>();
 
-export default async function handler(req: Request, res: Response) {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     if (req.method !== "POST") {
       return res.status(405).json({ error: "Method not allowed" });
@@ -84,4 +77,13 @@ export default async function handler(req: Request, res: Response) {
       message: error instanceof Error ? error.message : "Unknown error"
     });
   }
-} 
+}
+
+export const signScore = async (player: string, score: number, nonce: number) => {
+  const response = await fetch('/api/sign-score', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ player, score, nonce }),
+  });
+  return response.json();
+}; 
