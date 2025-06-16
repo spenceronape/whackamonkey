@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Box, VStack, HStack, Text, Button, Image, IconButton, Heading, UnorderedList, ListItem } from '@chakra-ui/react'
 import { useAccount, useWalletClient } from 'wagmi'
-import { NativeGlyphConnectButton, GLYPH_ICON_URL, useNativeGlyphConnection } from '@use-glyph/sdk-react'
+import { NativeGlyphConnectButton, GLYPH_ICON_URL, useNativeGlyphConnection, useGlyph } from '@use-glyph/sdk-react'
 import { FaVolumeMute, FaVolumeUp, FaTwitter } from 'react-icons/fa'
 import Confetti from 'react-confetti'
 import { ethers } from 'ethers'
@@ -82,7 +82,7 @@ const Game = () => {
   const [points, setPoints] = useState(0)
   const { address: playerAddress, isConnected } = useAccount()
   const { isConnected: isGlyphConnected } = useNativeGlyphConnection()
-  const [isSigningIn, setIsSigningIn] = useState(false)
+  const { authenticated, login } = useGlyph()
   const { data: walletClient } = useWalletClient()
   const gameAreaRef = useRef<HTMLDivElement>(null);
   const [muted, setMuted] = useState(false);
@@ -95,6 +95,7 @@ const Game = () => {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [nonce, setNonce] = useState<number>(generateNonce());
   const [isWhacking, setIsWhacking] = useState(false);
+  const [isSigningIn, setIsSigningIn] = useState(false);
 
   // Preload sounds
   const hitAudioRefs = useRef<HTMLAudioElement[]>([]);
@@ -480,7 +481,7 @@ const Game = () => {
                   CONNECT VIA GLYPH, PAL
                 </Button>
               </VStack>
-            ) : !isGlyphConnected ? (
+            ) : !authenticated ? (
               <VStack spacing={4} w="full">
                 <Text color="yellow.400">ONE MORE STEP!</Text>
                 <Button
@@ -494,15 +495,7 @@ const Game = () => {
                   transition="all 0.2s"
                   onClick={() => {
                     setIsSigningIn(true);
-                    const wrapper = document.getElementById('glyph-connect-btn-wrapper');
-                    if (wrapper) {
-                      const btn = wrapper.querySelector('button');
-                      if (btn) {
-                        (btn as HTMLElement).click();
-                        // Reset signing state after a short delay
-                        setTimeout(() => setIsSigningIn(false), 2000);
-                      }
-                    }
+                    login();
                   }}
                   isLoading={isSigningIn}
                   aria-label="Sign in with Glyph"
