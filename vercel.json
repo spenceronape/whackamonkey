@@ -26,11 +26,7 @@
       "continue": true
     },
     {
-      "src": "/(.*\\.js)",
-      "headers": {
-        "content-type": "application/javascript"
-      },
-      "continue": true
+      "handle": "filesystem"
     },
     {
       "src": "/(.*)",
