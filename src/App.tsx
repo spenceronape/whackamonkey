@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { ChakraProvider, extendTheme, Box, Flex, Text, useBreakpointValue, HStack, VStack, useDisclosure, Button } from '@chakra-ui/react'
+import { useEffect, useState } from 'react';
+import { ChakraProvider, extendTheme, Box, Flex, Text, HStack, VStack, useDisclosure, Button } from '@chakra-ui/react'
 import { NativeGlyphConnectButton, GlyphWidget, GlyphWalletProvider } from '@use-glyph/sdk-react'
 import { useAccount, useWalletClient } from 'wagmi'
 import { WagmiConfig, createConfig, http } from 'wagmi'

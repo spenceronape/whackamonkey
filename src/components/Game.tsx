@@ -380,11 +380,11 @@ const Game = () => {
               width={["60px", "6vw", "90px"]}
               height={["60px", "6vw", "90px"]}
               cursor="inherit"
-              onClick={e => {
+              onClick={(e: React.MouseEvent) => {
                 e.stopPropagation();
                 handleHoleClick(hole.index);
               }}
-              onTouchStart={e => {
+              onTouchStart={(e: React.TouchEvent) => {
                 e.preventDefault();
                 e.stopPropagation();
                 handleHoleClick(hole.index);

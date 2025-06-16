@@ -1,4 +1,3 @@
-import { ethers } from 'ethers';
 import { keccak256, arrayify, verifyMessage, AbiCoder } from 'ethers/lib/utils';
 
 export const generateNonce = () => {
