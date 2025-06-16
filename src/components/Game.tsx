@@ -717,49 +717,16 @@ const Game = () => {
   }, [isWhacking, handleHoleClick]);
 
   return (
-    <Box minH="calc(100vh - 80px)" display="flex" flexDirection="column" justifyContent="center" alignItems="center" bg="#1D0838" flexGrow={1} mt={{ base: "-5vh", md: "-15vh" }}>
-      {gameState === 'playing' ? (
-        <Box
-          ref={gameAreaRef}
-          position="relative"
-          width={["98vw", "90vw", "900px"]}
-          maxWidth="900px"
-          aspectRatio={"1920/1084"}
-          borderRadius="lg"
-          boxShadow="lg"
-          mt={0}
-        >
-          {renderGameState()}
-        </Box>
-      ) : (
-        <Box
-          position="relative"
-          width={["98vw", "90vw", "900px"]}
-          maxWidth="900px"
-          aspectRatio={"1920/1084"}
-          borderRadius="lg"
-          boxShadow="lg"
-          mt={0}
-          bg="#1D0838"
-          display="flex"
-          alignItems="center"
-          justifyContent="center"
-        >
-          <Box
-            position="absolute"
-            top={0}
-            left={0}
-            w="100%"
-            h="100%"
-            display="flex"
-            alignItems="center"
-            justifyContent="center"
-            zIndex={10}
-          >
-            {renderGameState()}
-          </Box>
-        </Box>
-      )}
+    <Box
+      minH="calc(100vh - 80px)"
+      display="flex"
+      flexDirection="column"
+      justifyContent="center"
+      alignItems="center"
+      bg="#1D0838"
+      flexGrow={1}
+    >
+      {renderGameState()}
     </Box>
   )
 }
