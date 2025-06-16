@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Box, VStack, HStack, Text, Button, Image, IconButton, Heading, UnorderedList, ListItem } from '@chakra-ui/react'
 import { useAccount, useWalletClient } from 'wagmi'
-import { NativeGlyphConnectButton, GLYPH_ICON_URL, useGlyph, GlyphWidget } from '@use-glyph/sdk-react'
+import { useGlyph, GlyphWidget } from '@use-glyph/sdk-react'
 import { FaVolumeMute, FaVolumeUp, FaTwitter } from 'react-icons/fa'
 import Confetti from 'react-confetti'
 import { ethers } from 'ethers'
@@ -87,7 +87,6 @@ const Game = () => {
   const [multiplier, setMultiplier] = useState(1);
   const MAX_MULTIPLIER = 5;
   const [contract, setContract] = useState<Contract | null>(null);
-  const [startingGame, setStartingGame] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
   const [submittingScore, setSubmittingScore] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -226,7 +225,6 @@ const Game = () => {
   const startGame = useCallback(async () => {
     setStartError(null);
     if (!contract) return;
-    setStartingGame(true);
     try {
       const tx = await contract.startGame({ value: GAME_COST_WEI });
       await tx.wait();
@@ -240,7 +238,6 @@ const Game = () => {
     } catch (err: unknown) {
       setStartError(err instanceof Error ? err.message : 'Failed to start game' as any);
     }
-    setStartingGame(false);
   }, [contract]);
 
   const handleHoleClick = (holeIndex: number) => {
