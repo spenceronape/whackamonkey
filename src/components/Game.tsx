@@ -450,7 +450,25 @@ const Game = () => {
             {!isConnected ? (
               <VStack spacing={4} w="full">
                 <Text color="gray.400">Connect your wallet to play</Text>
-                <Box className="glyph-widget-horizontal" w="full">
+                <Box 
+                  className="glyph-widget-horizontal" 
+                  w="full"
+                  sx={{
+                    '.glyph-widget': {
+                      width: '100%',
+                      height: '60px',
+                      fontSize: 'xl',
+                      backgroundColor: '#FFD600',
+                      color: '#1D0838',
+                      fontWeight: 'bold',
+                      borderRadius: 'md',
+                      _hover: {
+                        transform: 'scale(1.05)',
+                        transition: 'all 0.2s'
+                      }
+                    }
+                  }}
+                >
                   <GlyphWidget
                     buttonProps={{
                       showAvatar: false,
@@ -458,6 +476,10 @@ const Game = () => {
                       showUsername: false,
                       variant: 'connect',
                       size: 'lg',
+                      onConnect: () => {
+                        // Force a re-render after connection
+                        window.location.reload();
+                      },
                       style: {
                         width: '100%',
                         height: '60px',

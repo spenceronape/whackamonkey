@@ -165,14 +165,36 @@ function App() {
                 <Button colorScheme="yellow" variant="outline" size="sm" onClick={onOpen}>
                   Hall of Fame
                 </Button>
-                <Box className="glyph-widget-horizontal">
+                <Box 
+                  className="glyph-widget-horizontal"
+                  sx={{
+                    '.glyph-widget': {
+                      backgroundColor: isConnected ? 'transparent' : '#FFD600',
+                      color: isConnected ? '#FFD600' : '#1D0838',
+                      border: '2px solid #FFD600',
+                      borderRadius: 'md',
+                      padding: '8px 16px',
+                      fontSize: 'md',
+                      fontWeight: 'bold',
+                      transition: 'all 0.2s',
+                      _hover: {
+                        transform: 'scale(1.05)',
+                        backgroundColor: isConnected ? 'rgba(255, 214, 0, 0.1)' : '#FFD600',
+                      }
+                    }
+                  }}
+                >
                   <GlyphWidget
                     buttonProps={{
                       showAvatar: false,
                       showBalance: true,
                       showUsername: false,
                       variant: isConnected ? 'connected' : 'connect',
-                      size: 'md'
+                      size: 'md',
+                      onConnect: () => {
+                        // Force a re-render after connection
+                        window.location.reload();
+                      }
                     }}
                   />
                 </Box>

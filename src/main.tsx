@@ -41,12 +41,14 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <GlyphWalletProvider 
       chains={supportedChains} 
       askForSignature={true}
-      autoConnect={true}
-      reconnectOnMount={true}
-      disableAutoConnect={false}
+      autoConnect={false}
+      reconnectOnMount={false}
+      disableAutoConnect={true}
       disableInjectedProvider={false}
       maxListeners={20}
       cleanupOnUnmount={true}
+      storageKey="whackamonkey-wallet"
+      storageType="localStorage"
     >
       <ChakraProvider>
         <App />
