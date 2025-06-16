@@ -12,39 +12,14 @@ interface SignScoreError {
   retryAfter?: number;
 }
 
-export async function signScore(
-  player: string,
-  score: number,
-  nonce: number
-): Promise<SignScoreResponse> {
-  try {
-    const response = await fetch('/api/sign-score', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        player,
-        score,
-        nonce,
-      }),
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      const error = data as SignScoreError;
-      throw new Error(error.message || error.error || 'Failed to sign score');
-    }
-
-    return data as SignScoreResponse;
-  } catch (error) {
-    if (error instanceof Error) {
-      throw error;
-    }
-    throw new Error('Failed to sign score');
-  }
-}
+export const signScore = async (player: string, score: number, nonce: number) => {
+  const response = await fetch('/api/sign-score', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ player, score, nonce }),
+  });
+  return response.json();
+};
 
 // Helper to generate a random nonce
 export function generateNonce(): number {
