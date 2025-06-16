@@ -1,5 +1,5 @@
 import { ethers } from "ethers";
-import type { Request, Response } from 'express';
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 const PRIVATE_KEY = process.env.SIGNER_PRIVATE_KEY;
 const wallet = new ethers.Wallet(PRIVATE_KEY!);
@@ -12,7 +12,7 @@ const MIN_SUBMISSION_INTERVAL = 60;
 // In-memory cache for recent submissions
 const recentSubmissions = new Map<string, number>();
 
-export default async function handler(req: Request, res: Response) {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     if (req.method !== "POST") {
       return res.status(405).json({ error: "Method not allowed" });
