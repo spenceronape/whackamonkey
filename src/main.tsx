@@ -40,11 +40,11 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <GlyphWalletProvider 
       chains={supportedChains} 
-      askForSignature={true}
+      askForSignature={false}
       autoConnect={false}
       reconnectOnMount={false}
       disableAutoConnect={true}
-      disableInjectedProvider={true}
+      disableInjectedProvider={false}
       // Add these options to handle event listeners
       maxListeners={20}
       cleanupOnUnmount={true}

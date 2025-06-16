@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Box, VStack, HStack, Text, Button, Image, IconButton, Heading, UnorderedList, ListItem } from '@chakra-ui/react'
 import { useAccount, useWalletClient } from 'wagmi'
-import { NativeGlyphConnectButton, GLYPH_ICON_URL } from '@use-glyph/sdk-react'
+import { NativeGlyphConnectButton, GLYPH_ICON_URL, useGlyph, GlyphWidget } from '@use-glyph/sdk-react'
 import { FaVolumeMute, FaVolumeUp, FaTwitter } from 'react-icons/fa'
 import Confetti from 'react-confetti'
 import { ethers } from 'ethers'
@@ -93,6 +93,7 @@ const Game = () => {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [nonce, setNonce] = useState<number>(generateNonce());
   const [isWhacking, setIsWhacking] = useState(false);
+  const { isAuthenticated, login } = useGlyph();
 
   // Preload sounds
   const hitAudioRefs = useRef<HTMLAudioElement[]>([]);
@@ -447,52 +448,34 @@ const Game = () => {
                 <ListItem>GET THE HIGH SCORE AND WIN THE PRIZE POOL*</ListItem>
               </UnorderedList>
             </VStack>
-            {!isConnected ? (
+            {!isConnected && (
               <VStack spacing={4} w="full">
                 <Text color="gray.400">Connect your wallet to play</Text>
-                {/* Hidden NativeGlyphConnectButton */}
-                <Box display="none">
-                  <span id="glyph-connect-btn-wrapper">
-                    <NativeGlyphConnectButton />
-                  </span>
+                <Box w="full">
+                  <GlyphWidget
+                    buttonProps={{
+                      showAvatar: false,
+                      showBalance: false,
+                      showUsername: false,
+                      variant: 'connect',
+                      size: 'lg',
+                      style: {
+                        width: '100%',
+                        height: '60px',
+                        fontSize: 'xl',
+                        backgroundColor: '#FFD600',
+                        color: '#1D0838',
+                        fontWeight: 'bold',
+                        borderRadius: 'md',
+                      },
+                    }}
+                  />
                 </Box>
-                <Button
-                  colorScheme="yellow"
-                  size="lg"
-                  w="full"
-                  h={{ base: "48px", md: "60px" }}
-                  fontSize={{ base: "md", md: "xl" }}
-                  leftIcon={<img src={GLYPH_ICON_URL} alt="Glyph" style={{ width: 32, height: 32 }} />}
-                  _hover={{ transform: 'scale(1.05)' }}
-                  transition="all 0.2s"
-                  onClick={() => {
-                    // Find the first button inside the wrapper and click it
-                    const wrapper = document.getElementById('glyph-connect-btn-wrapper');
-                    if (wrapper) {
-                      const btn = wrapper.querySelector('button');
-                      if (btn) (btn as HTMLElement).click();
-                    }
-                  }}
-                  aria-label="Connect wallet using Glyph"
-                >
-                  CONNECT VIA GLYPH, PAL
-                </Button>
               </VStack>
-            ) : (
-              <Button
-                colorScheme="yellow"
-                size="lg"
-                onClick={startGame}
-                w="full"
-                h={{ base: "48px", md: "60px" }}
-                fontSize={{ base: "md", md: "xl" }}
-                _hover={{ transform: 'scale(1.05)' }}
-                transition="all 0.2s"
-                aria-label="Start Whack-A-Monkey game"
-                isLoading={startingGame}
-                isDisabled={startingGame || !contract}
-              >
-                {startingGame ? 'Starting...' : 'START GAME, I LOVE YOU'}
+            )}
+            {isConnected && !isAuthenticated && (
+              <Button colorScheme="yellow" size="lg" onClick={login} mt={4}>
+                Sign in to continue
               </Button>
             )}
             {startError && <Text color="red.400">{startError}</Text>}
