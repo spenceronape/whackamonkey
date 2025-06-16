@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Box, VStack, HStack, Text, Button, Image, IconButton, Heading, UnorderedList, ListItem } from '@chakra-ui/react'
 import { useAccount, useWalletClient } from 'wagmi'
 import { NativeGlyphConnectButton, GLYPH_ICON_URL } from '@use-glyph/sdk-react'
@@ -283,12 +283,9 @@ const Game = () => {
     const fetchStats = async () => {
       if (contract) {
         try {
-          const pool = await contract.getPrizePool();
-          // No need to set prizePool here, as it's already set in the component
-          const score = await contract.highScore();
-          // No need to set highScore here, as it's already set in the component
-          const holder = await contract.highScoreHolder();
-          // No need to set highScoreHolder here, as it's already set in the component
+          await contract.getPrizePool();
+          await contract.highScore();
+          await contract.highScoreHolder();
         } catch (err: unknown) {
           if (err instanceof Error) {
             // Optionally log err.message
