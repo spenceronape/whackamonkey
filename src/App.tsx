@@ -4,6 +4,8 @@ import { GlyphWalletProvider } from '@use-glyph/sdk-react'
 import { apeChain } from 'viem/chains'
 import Game from './components/Game'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import Header from './components/Header'
+import Footer from './components/Footer'
 
 const config = createConfig({
   chains: [apeChain],
@@ -21,7 +23,9 @@ function App() {
         <GlyphWalletProvider chains={[apeChain]}>
           <ChakraProvider>
             <Box minH="100vh" bg="#1D0838">
+              <Header />
               <Game />
+              <Footer />
             </Box>
           </ChakraProvider>
         </GlyphWalletProvider>
