@@ -169,18 +169,25 @@ function App() {
                   <Button colorScheme="yellow" variant="outline" size="sm" onClick={onOpen}>
                     Hall of Fame
                   </Button>
-                  {isConnected ? (
-                    <Box className="glyph-widget-horizontal">
+                  {!isConnected ? (
+                    <NativeGlyphConnectButton />
+                  ) : (
+                    <Box>
                       <GlyphWidget
                         buttonProps={{
                           showAvatar: false,
                           showBalance: true,
-                          showUsername: false
+                          showUsername: false,
+                          size: 'md',
+                          style: {
+                            background: 'white',
+                            color: '#1D0838',
+                            fontWeight: 'bold',
+                            borderRadius: 'md',
+                          },
                         }}
                       />
                     </Box>
-                  ) : (
-                    <NativeGlyphConnectButton />
                   )}
                 </HStack>
               </Flex>
