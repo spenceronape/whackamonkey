@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Box, VStack, HStack, Text, Button, Image, IconButton, Heading, UnorderedList, ListItem } from '@chakra-ui/react'
 import { useAccount, useWalletClient } from 'wagmi'
-import { useGlyph, GlyphWidget } from '@use-glyph/sdk-react'
+import { NativeGlyphConnectButton, LogoutButton } from '@use-glyph/sdk-react'
 import { FaVolumeMute, FaVolumeUp, FaTwitter } from 'react-icons/fa'
 import Confetti from 'react-confetti'
 import { ethers } from 'ethers'
@@ -92,7 +92,6 @@ const Game = () => {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [nonce, setNonce] = useState<number>(generateNonce());
   const [isWhacking, setIsWhacking] = useState(false);
-  const { isAuthenticated, login } = useGlyph();
 
   // Preload sounds
   const hitAudioRefs = useRef<HTMLAudioElement[]>([]);
@@ -449,31 +448,14 @@ const Game = () => {
               <VStack spacing={4} w="full">
                 <Text color="gray.400">Connect your wallet to play</Text>
                 <Box w="full">
-                  <GlyphWidget
-                    buttonProps={{
-                      showAvatar: false,
-                      showBalance: false,
-                      showUsername: false,
-                      variant: 'connect',
-                      size: 'lg',
-                      style: {
-                        width: '100%',
-                        height: '60px',
-                        fontSize: 'xl',
-                        backgroundColor: '#FFD600',
-                        color: '#1D0838',
-                        fontWeight: 'bold',
-                        borderRadius: 'md',
-                      },
-                    }}
-                  />
+                  <NativeGlyphConnectButton />
                 </Box>
               </VStack>
             )}
-            {isConnected && !isAuthenticated && (
-              <Button colorScheme="yellow" size="lg" onClick={login} mt={4}>
-                Sign in to continue
-              </Button>
+            {isConnected && (
+              <Box w="full" mt={4}>
+                <LogoutButton />
+              </Box>
             )}
             {startError && <Text color="red.400">{startError}</Text>}
           </VStack>
