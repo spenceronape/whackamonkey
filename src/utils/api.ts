@@ -23,5 +23,9 @@ export const signScore = async (player: string, score: number, nonce: number) =>
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ player, score, nonce }),
   });
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`API error: ${response.status} - ${text}`);
+  }
   return response.json();
 }; 
