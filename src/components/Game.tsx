@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Box, VStack, HStack, Text, Button, Image, IconButton, Heading, UnorderedList, ListItem } from '@chakra-ui/react'
+import { Box, VStack, HStack, Text, Button, Image, IconButton, Heading, UnorderedList, ListItem, Spinner } from '@chakra-ui/react'
 import { useAccount, useWalletClient } from 'wagmi'
 import { NativeGlyphConnectButton, GLYPH_ICON_URL, useGlyph } from '@use-glyph/sdk-react'
 import { FaVolumeMute, FaVolumeUp, FaTwitter } from 'react-icons/fa'
@@ -9,6 +9,7 @@ import WHACK_A_MONKEY_ABI from './WhackAMonkeyABI.json'
 import { WHACK_A_MONKEY_ADDRESS } from './contractAddress'
 import { Contract } from 'ethers'
 import { signScore, generateNonce, verifySignature } from '../utils/api'
+import { GlyphWidget } from '@use-glyph/sdk-react'
 
 // Game constants
 const GAME_DURATION = 60 // seconds
@@ -81,7 +82,7 @@ const Game = () => {
   const [misses, setMisses] = useState(0)
   const [points, setPoints] = useState(0)
   const { address: playerAddress, isConnected } = useAccount()
-  const { isGlyphSignedIn, login } = useGlyph()
+  const { ready, authenticated, login } = useGlyph()
   const { data: walletClient } = useWalletClient()
   const gameAreaRef = useRef<HTMLDivElement>(null);
   const [muted, setMuted] = useState(false);
@@ -480,9 +481,14 @@ const Game = () => {
                   CONNECT VIA GLYPH, PAL
                 </Button>
               </VStack>
-            ) : !isGlyphSignedIn ? (
+            ) : !ready ? (
               <VStack spacing={4} w="full">
-                <Text color="yellow.400">ONE MORE STEP!</Text>
+                <Text color="yellow.400">Loading...</Text>
+                <Spinner color="yellow.400" size="lg" />
+              </VStack>
+            ) : !authenticated ? (
+              <VStack spacing={4} w="full">
+                <Text color="yellow.400">NOW SIGN IN, PAL</Text>
                 <Button
                   colorScheme="yellow"
                   size="lg"
@@ -503,21 +509,32 @@ const Game = () => {
                 </Button>
               </VStack>
             ) : (
-              <Button
-                colorScheme="yellow"
-                size="lg"
-                onClick={startGame}
-                w="full"
-                h={{ base: "48px", md: "60px" }}
-                fontSize={{ base: "md", md: "xl" }}
-                _hover={{ transform: 'scale(1.05)' }}
-                transition="all 0.2s"
-                aria-label="Start Whack-A-Monkey game"
-                isLoading={startingGame}
-                isDisabled={startingGame || !contract}
-              >
-                {startingGame ? 'Starting...' : 'START GAME, I LOVE YOU'}
-              </Button>
+              <HStack spacing={4} w="full">
+                <Button
+                  colorScheme="yellow"
+                  size="lg"
+                  onClick={startGame}
+                  flex={1}
+                  h={{ base: "48px", md: "60px" }}
+                  fontSize={{ base: "md", md: "xl" }}
+                  _hover={{ transform: 'scale(1.05)' }}
+                  transition="all 0.2s"
+                  aria-label="Start Whack-A-Monkey game"
+                  isLoading={startingGame}
+                  isDisabled={startingGame || !contract}
+                >
+                  {startingGame ? 'Starting...' : 'START GAME, I LOVE YOU'}
+                </Button>
+                <Box className="glyph-widget-horizontal">
+                  <GlyphWidget
+                    buttonProps={{
+                      showAvatar: false,
+                      showBalance: true,
+                      showUsername: false
+                    }}
+                  />
+                </Box>
+              </HStack>
             )}
             {startError && <Text color="red.400">{startError}</Text>}
           </VStack>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ChakraProvider, extendTheme, Box, Flex, Text, HStack, VStack, useDisclosure, Button } from '@chakra-ui/react'
-import { NativeGlyphConnectButton, GlyphWidget, GlyphWalletProvider } from '@use-glyph/sdk-react'
-import { useAccount, useWalletClient } from 'wagmi'
+import { GlyphWalletProvider } from '@use-glyph/sdk-react'
+import { useWalletClient } from 'wagmi'
 import { WagmiConfig, createConfig, http } from 'wagmi'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { apeChain } from 'viem/chains'
@@ -52,7 +52,6 @@ const theme = extendTheme({
 })
 
 function App() {
-  const { isConnected } = useAccount();
   const { data: walletClient } = useWalletClient();
   const [contract, setContract] = useState<Contract | null>(null);
   const [prizePool, setPrizePool] = useState<string | null>(null);
@@ -98,7 +97,16 @@ function App() {
   return (
     <WagmiConfig config={config}>
       <QueryClientProvider client={queryClient}>
-        <GlyphWalletProvider chains={[apeChain]}>
+        <GlyphWalletProvider 
+          chains={[apeChain]}
+          askForSignature={false}
+          autoConnect={false}
+          reconnectOnMount={false}
+          disableAutoConnect={true}
+          disableInjectedProvider={true}
+          maxListeners={20}
+          cleanupOnUnmount={true}
+        >
           <ChakraProvider theme={theme}>
             {/* Header Navigation Bar */}
             <Box as="header" w="100%" bg="#1D0838" px={{ base: 2, md: 8 }} py={{ base: 2, md: 4 }} zIndex={100} position="relative">
@@ -163,24 +171,11 @@ function App() {
                     </VStack>
                   </HStack>
                 </Flex>
-                {/* Hall of Fame Button and Wallet Widget */}
+                {/* Hall of Fame Button */}
                 <HStack spacing={4}>
                   <Button colorScheme="yellow" variant="outline" size="sm" onClick={onOpen}>
                     Hall of Fame
                   </Button>
-                  {isConnected ? (
-                    <Box className="glyph-widget-horizontal">
-                      <GlyphWidget
-                        buttonProps={{
-                          showAvatar: false,
-                          showBalance: true,
-                          showUsername: false
-                        }}
-                      />
-                    </Box>
-                  ) : (
-                    <NativeGlyphConnectButton />
-                  )}
                 </HStack>
               </Flex>
             </Box>
