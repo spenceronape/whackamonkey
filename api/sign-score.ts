@@ -22,8 +22,8 @@ function generateSecureNonce(player: string): number {
   // Get or create session
   let session = playerSessions.get(player);
   if (!session || (now - session.timestamp) > sessionTimeout) {
-    // Create new session with random session ID
-    const sessionId = Math.floor(Math.random() * 1000000);
+    // Create new session with random session ID (smaller range to prevent overflow)
+    const sessionId = Math.floor(Math.random() * 10000); // 0-9999 instead of 0-999999
     session = { sessionId, lastNonce: 0, timestamp: now };
     playerSessions.set(player, session);
   }
@@ -33,7 +33,7 @@ function generateSecureNonce(player: string): number {
   session.timestamp = now; // Update session timestamp
   
   // Combine session ID with nonce to create unique, unpredictable value
-  const nonce = session.sessionId * 1000000 + session.lastNonce;
+  const nonce = session.sessionId * 10000 + session.lastNonce; // Smaller multiplier
   
   return nonce;
 }
@@ -99,6 +99,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Generate a unique, secure nonce for this player
     const nonce = generateSecureNonce(player);
+    console.log(`Generated nonce for player ${player}: ${nonce}`);
 
     // Sign the message
     const messageHash = ethers.utils.solidityKeccak256(

@@ -400,6 +400,7 @@ const Game = () => {
     try {
       // Call signScore, which now returns both signature and nonce
       const { signature, nonce } = await signScore(playerAddress, points);
+      console.log('Received nonce from server:', nonce, 'Type:', typeof nonce);
       setScoreSignature(signature);
       setNonce(nonce);
     } catch (err) {
@@ -423,6 +424,7 @@ const Game = () => {
     try {
       // Nonce is now a number from the server, no conversion needed
       const nonceNumber = typeof nonce === 'string' ? parseInt(nonce, 10) : nonce;
+      console.log('Submitting with nonce:', nonceNumber, 'Original nonce:', nonce);
       
       if (!verifySignature(playerAddress, points, nonceNumber, scoreSignature)) {
         throw new Error('Invalid signature');
@@ -436,6 +438,9 @@ const Game = () => {
     } catch (error) {
       console.error('Error submitting score:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to submit score';
+      console.log('Full error message:', errorMessage);
+      console.log('Error includes "old nonce":', errorMessage.toLowerCase().includes('old nonce'));
+      
       if (errorMessage.toLowerCase().includes('old nonce')) {
         setSubmitError("Score validation expired. Please validate your score again to claim your prize!");
         setScoreSignature(null);
