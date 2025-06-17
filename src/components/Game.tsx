@@ -96,6 +96,7 @@ const Game = () => {
   const [signScoreError, setSignScoreError] = useState<string | null>(null);
   const [prizeClaimed, setPrizeClaimed] = useState(false);
   const [highScore, setHighScore] = useState<number | null>(null);
+  const [minPrizePoolBuffer, setMinPrizePoolBuffer] = useState<string | null>(null);
 
   // Preload sounds
   const hitAudioRefs = useRef<HTMLAudioElement[]>([]);
@@ -245,6 +246,23 @@ const Game = () => {
     };
     fetchHighScore();
     const interval = setInterval(fetchHighScore, 10000);
+    return () => clearInterval(interval);
+  }, [readContract]);
+
+  // Fetch minPrizePoolBuffer from contract
+  useEffect(() => {
+    const fetchBuffer = async () => {
+      if (readContract) {
+        try {
+          const buffer = await (readContract as any).minPrizePoolBuffer();
+          setMinPrizePoolBuffer(ethers.utils.formatEther(buffer));
+        } catch (err) {
+          setMinPrizePoolBuffer(null);
+        }
+      }
+    };
+    fetchBuffer();
+    const interval = setInterval(fetchBuffer, 10000);
     return () => clearInterval(interval);
   }, [readContract]);
 
@@ -529,7 +547,12 @@ const Game = () => {
                 <ListItem>GET THE HIGH SCORE AND WIN THE PRIZE POOL*</ListItem>
               </UnorderedList>
             </VStack>
-            {!isConnected ? (
+            {/* Maintenance or Connect/Play logic */}
+            {isMaintenance ? (
+              <Text color="yellow.400" fontWeight="bold" fontSize="xl" mb={4}>
+                MACHINE UNDER MAINTENANCE, COME BACK SOON PAL
+              </Text>
+            ) : !isConnected ? (
               <VStack spacing={4} w="full">
                 <Text color="gray.400">Connect your wallet to play</Text>
                 {/* Hidden NativeGlyphConnectButton */}
@@ -949,6 +972,9 @@ const Game = () => {
       return () => clearInterval(interval);
     }
   }, [gameState, prizeClaimed, scoreSignature]);
+
+  // Calculate if maintenance mode should be active
+  const isMaintenance = prizePool !== null && minPrizePoolBuffer !== null && parseFloat(prizePool) < parseFloat(minPrizePoolBuffer);
 
   return (
     <Box minH="calc(100vh - 80px)" display="flex" flexDirection="column" justifyContent="center" alignItems="center" bg="#1D0838" flexGrow={1} mt={{ base: "-5vh", md: "-15vh" }}>
