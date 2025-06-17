@@ -31,18 +31,19 @@ async function generateContractBasedNonce(player: string): Promise<number> {
     const lastNonce = await contract.lastScoreNonce(player);
     console.log(`Contract returned last nonce for ${player}: ${lastNonce.toString()}`);
     
-    // Add a random number (1-1000) to the last nonce to make it unpredictable
-    const randomIncrement = Math.floor(Math.random() * 1000) + 1;
+    // Add a random number (1-100) to the last nonce to make it unpredictable
+    // Keep it small to avoid BigNumber overflow issues
+    const randomIncrement = Math.floor(Math.random() * 100) + 1;
     const nextNonce = lastNonce.add(randomIncrement);
     console.log(`Generated next nonce: ${nextNonce.toString()} (last + ${randomIncrement})`);
     
     return nextNonce.toNumber();
   } catch (error) {
     console.error('Error reading nonce from contract:', error);
-    // Fallback to timestamp-based nonce if contract call fails
-    const now = Date.now() * 1000000;
-    const random = Math.floor(Math.random() * 1000000);
-    const fallbackNonce = now + random;
+    // Fallback to a simple timestamp-based nonce if contract call fails
+    const now = Math.floor(Date.now() / 1000); // Use seconds instead of milliseconds
+    const random = Math.floor(Math.random() * 1000);
+    const fallbackNonce = now * 1000 + random; // Multiply by 1000 to get into thousands
     console.log(`Using fallback nonce: ${fallbackNonce}`);
     return fallbackNonce;
   }
