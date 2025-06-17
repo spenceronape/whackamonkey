@@ -303,7 +303,6 @@ const Game = () => {
       if (readContract) {
         try {
           const cost = await (readContract as any).gameCost();
-          const fee = await (readContract as any).protocolFee();
           const share = await (readContract as any).prizePoolShare();
           setGameCost(ethers.utils.formatEther(cost));
           setGameCostWei(cost.toString());
