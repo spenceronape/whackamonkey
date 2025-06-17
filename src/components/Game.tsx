@@ -56,7 +56,7 @@ function getRandomOffsetPx() {
 }
 
 // Game states
-type GameState = 'idle' | 'playing' | 'gameOver' | 'winner'
+type GameState = 'idle' | 'playing' | 'gameOver' | 'winner' | 'tutorial'
 
 type ActiveHole = {
   index: number
@@ -98,6 +98,11 @@ const Game = () => {
   const [highScore, setHighScore] = useState<number | null>(null);
   const [minPrizePoolBuffer, setMinPrizePoolBuffer] = useState<string | null>(null);
   const [lastValidationTime, setLastValidationTime] = useState<number>(0);
+  
+  // Tutorial state
+  const [tutorialTimeLeft, setTutorialTimeLeft] = useState(30); // 30 seconds for tutorial
+  const [showTutorialTip, setShowTutorialTip] = useState(false);
+  const [tutorialTip, setTutorialTip] = useState('');
 
   // Preload sounds
   const hitAudioRefs = useRef<HTMLAudioElement[]>([]);
@@ -161,6 +166,16 @@ const Game = () => {
           return prev - 1
         })
       }, 1000)
+    } else if (gameState === 'tutorial') {
+      timeInterval = setInterval(() => {
+        setTutorialTimeLeft((prev) => {
+          if (prev <= 1) {
+            setGameState('idle');
+            return 30
+          }
+          return prev - 1
+        })
+      }, 1000)
     }
     return () => {
       clearInterval(timeInterval)
@@ -169,24 +184,36 @@ const Game = () => {
 
   // Maintain 3-6 monkeys on board, each with their own timer
   useEffect(() => {
-    if (gameState !== 'playing') return
+    if (gameState !== 'playing' && gameState !== 'tutorial') return
     // Calculate current monkey lifetime based on time left
-    const progress = 1 - timeLeft / GAME_DURATION;
+    const currentTime = gameState === 'playing' ? timeLeft : tutorialTimeLeft;
+    const totalTime = gameState === 'playing' ? GAME_DURATION : 30;
+    const progress = 1 - currentTime / totalTime;
+    
+    // Tutorial mode: slower, more predictable spawns
+    const baseLifetime = gameState === 'tutorial' ? 3000 : MONKEY_LIFETIME_START;
+    const endLifetime = gameState === 'tutorial' ? 1500 : MONKEY_LIFETIME_END;
+    
     const monkeyLifetime = Math.round(
-      MONKEY_LIFETIME_START + (MONKEY_LIFETIME_END - MONKEY_LIFETIME_START) * Math.sqrt(progress)
+      baseLifetime + (endLifetime - baseLifetime) * Math.sqrt(progress)
     );
+    
     // Spawn monkeys if needed
-    if (activeHoles.length < MIN_ACTIVE_HOLES) {
-      for (let i = activeHoles.length; i < MIN_ACTIVE_HOLES; i++) {
+    const minHoles = gameState === 'tutorial' ? 2 : MIN_ACTIVE_HOLES;
+    const maxHoles = gameState === 'tutorial' ? 4 : MAX_ACTIVE_HOLES;
+    
+    if (activeHoles.length < minHoles) {
+      for (let i = activeHoles.length; i < minHoles; i++) {
         spawnMonkey(monkeyLifetime)
       }
-    } else if (activeHoles.length < MAX_ACTIVE_HOLES) {
-      // Randomly decide to spawn up to MAX_ACTIVE_HOLES
-      if (Math.random() < 0.3) { // Reduced spawn rate
+    } else if (activeHoles.length < maxHoles) {
+      // Randomly decide to spawn up to maxHoles
+      const spawnRate = gameState === 'tutorial' ? 0.2 : 0.3; // Slower spawns in tutorial
+      if (Math.random() < spawnRate) {
         spawnMonkey(monkeyLifetime)
       }
     }
-  }, [activeHoles, gameState, timeLeft, spawnMonkey])
+  }, [activeHoles, gameState, timeLeft, tutorialTimeLeft, spawnMonkey])
 
   // Reset multiplier on miss
   useEffect(() => {
@@ -197,7 +224,7 @@ const Game = () => {
 
   // Cleanup timers on game end
   useEffect(() => {
-    if (gameState !== 'playing') {
+    if (gameState !== 'playing' && gameState !== 'tutorial') {
       activeHoles.forEach(h => h.timer && clearTimeout(h.timer))
       setActiveHoles([])
     }
@@ -303,6 +330,11 @@ const Game = () => {
   }, [contract]);
 
   const handleHoleClick = (holeIndex: number) => {
+    if (gameState === 'tutorial') {
+      handleTutorialHoleClick(holeIndex);
+      return;
+    }
+    
     if (gameState !== 'playing') return
     setActiveHoles(prev => prev.map(h => {
       if (h.index === holeIndex && !h.hit) {
@@ -331,7 +363,7 @@ const Game = () => {
 
   // Board-level click/tap handler for misses
   const handleBoardClick = () => {
-    if (gameState !== 'playing') return;
+    if (gameState !== 'playing' && gameState !== 'tutorial') return;
     // If we get here, it means we clicked the board but not a monkey
     setMultiplier(1);
     setMisses(m => m + 1);
@@ -466,6 +498,67 @@ const Game = () => {
     }
   };
 
+  // Tutorial functions
+  const startTutorial = useCallback(() => {
+    setGameState('tutorial');
+    setPoints(0);
+    setTutorialTimeLeft(30);
+    setActiveHoles([]);
+    setHits(0);
+    setMisses(0);
+    setMultiplier(1);
+    setShowTutorialTip(true);
+    setTutorialTip('CLICK THE MONKEYS TO WHACK THEM!');
+    
+    // Hide tip after 3 seconds
+    setTimeout(() => {
+      setShowTutorialTip(false);
+    }, 3000);
+  }, []);
+
+  const handleTutorialHoleClick = (holeIndex: number) => {
+    if (gameState !== 'tutorial') return;
+    
+    setActiveHoles(prev => prev.map(h => {
+      if (h.index === holeIndex && !h.hit) {
+        // Increase multiplier first, then update score
+        const newMultiplier = Math.min(multiplier + 1, MAX_MULTIPLIER);
+        setMultiplier(newMultiplier);
+        setPoints(p => p + newMultiplier);
+        setHits(hits => hits + 1);
+        
+        if (h.timer) clearTimeout(h.timer);
+        
+        // Play random hit sound if not muted
+        if (!muted && hitAudioRefs.current.length > 0) {
+          const idx = Math.floor(Math.random() * hitAudioRefs.current.length);
+          const audio = hitAudioRefs.current[idx];
+          audio.currentTime = 0;
+          audio.play();
+        }
+        
+        // Show crushed image, then remove after CRUSHED_DISPLAY_TIME
+        setTimeout(() => {
+          setActiveHoles(current => current.filter(hh => hh.index !== holeIndex));
+        }, CRUSHED_DISPLAY_TIME);
+        
+        // Show tutorial tips based on performance
+        if (hits === 0) {
+          setTutorialTip('GREAT! BUILD YOUR MULTIPLIER WITH CONSECUTIVE HITS!');
+          setShowTutorialTip(true);
+          setTimeout(() => setShowTutorialTip(false), 3000);
+        } else if (multiplier >= 3) {
+          setTutorialTip('EXCELLENT! HIGHER MULTIPLIER = MORE POINTS!');
+          setShowTutorialTip(true);
+          setTimeout(() => setShowTutorialTip(false), 3000);
+        }
+        
+        return { ...h, hit: true, crushed: true };
+      }
+      return h;
+    }));
+  };
+
   const renderGameBoard = () => {
     return (
       <Box
@@ -499,6 +592,30 @@ const Game = () => {
           bg="whiteAlpha.800"
           _hover={{ bg: 'whiteAlpha.900' }}
         />
+        
+        {/* Tutorial Tip Overlay */}
+        {gameState === 'tutorial' && showTutorialTip && (
+          <Box
+            position="absolute"
+            top="50%"
+            left="50%"
+            transform="translate(-50%, -50%)"
+            bg="yellow.500"
+            color="black"
+            px={4}
+            py={2}
+            borderRadius="md"
+            fontSize="lg"
+            fontWeight="bold"
+            zIndex={20}
+            textAlign="center"
+            maxW="80%"
+            boxShadow="lg"
+          >
+            {tutorialTip}
+          </Box>
+        )}
+        
         {activeHoles.map((hole) => {
           const pos = HOLE_POSITIONS[hole.index]
           return (
@@ -666,6 +783,20 @@ const Game = () => {
                 >
                   {startingGame ? 'Starting...' : 'START GAME, I LOVE YOU'}
                 </Button>
+                <Button
+                  colorScheme="blue"
+                  size="md"
+                  onClick={startTutorial}
+                  w="full"
+                  h={{ base: "40px", md: "48px" }}
+                  fontSize={{ base: "sm", md: "md" }}
+                  _hover={{ transform: 'scale(1.02)' }}
+                  transition="all 0.2s"
+                  aria-label="Start tutorial"
+                  variant="outline"
+                >
+                  🎓 TRY TUTORIAL FIRST
+                </Button>
                 <Box mt={4} w="full" display="flex" justifyContent="center">
                   <Box className="glyph-widget-horizontal">
                     <GlyphWidget
@@ -754,6 +885,65 @@ const Game = () => {
                   </VStack>
                 </HStack>
               </HStack>
+            </Box>
+          </VStack>
+        )
+      case 'tutorial':
+        return (
+          <VStack spacing={6} mt={{ base: -2, md: -8 }}>
+            <Box
+              bg="blue.600"
+              p={{ base: 2, md: 3 }}
+              borderRadius="md"
+              border="2px solid"
+              borderColor="blue.400"
+              boxShadow="0 0 10px rgba(66, 153, 225, 0.3)"
+              width="100%"
+              maxW={{ base: "99%", md: "600px" }}
+              overflowX="auto"
+            >
+              <HStack spacing={{ base: 3, md: 6 }} justify="center" fontFamily="mono">
+                <VStack spacing={0}>
+                  <Text color="blue.200" fontSize={{ base: "2xs", md: "sm" }}>TUTORIAL</Text>
+                  <Text color="blue.300" fontSize={{ base: "lg", md: "xl" }} fontWeight="bold" fontFamily="mono">FREE PLAY</Text>
+                </VStack>
+                <Text color="blue.400">|</Text>
+                <VStack spacing={0}>
+                  <Text color="blue.200" fontSize={{ base: "xs", md: "sm" }}>POINTS</Text>
+                  <Text color="blue.300" fontSize={{ base: "lg", md: "xl" }} fontWeight="bold" fontFamily="mono">{points}</Text>
+                </VStack>
+                <Text color="blue.400">|</Text>
+                <VStack spacing={0}>
+                  <Text color="blue.200" fontSize={{ base: "xs", md: "sm" }}>TIME</Text>
+                  <Text color="blue.300" fontSize={{ base: "lg", md: "xl" }} fontWeight="bold" fontFamily="mono">{tutorialTimeLeft}s</Text>
+                </VStack>
+                <Text color="blue.400">|</Text>
+                <VStack spacing={0}>
+                  <Text color="blue.200" fontSize={{ base: "xs", md: "sm" }}>MULTIPLIER</Text>
+                  <Text color="blue.300" fontSize={{ base: "lg", md: "xl" }} fontWeight="bold" fontFamily="mono">{multiplier}x</Text>
+                </VStack>
+              </HStack>
+            </Box>
+            {renderGameBoard()}
+            <Box
+              bg="blue.600"
+              p={{ base: 2, md: 3 }}
+              borderRadius="md"
+              border="2px solid"
+              borderColor="blue.400"
+              boxShadow="0 0 10px rgba(66, 153, 225, 0.3)"
+              width="100%"
+              maxW={{ base: "99%", md: "600px" }}
+              overflowX="auto"
+            >
+              <VStack spacing={2}>
+                <Text color="blue.200" fontSize={{ base: "sm", md: "md" }} fontWeight="bold">
+                  🎓 TUTORIAL MODE - NO BLOCKCHAIN REQUIRED
+                </Text>
+                <Text color="blue.100" fontSize={{ base: "xs", md: "sm" }} textAlign="center">
+                  Practice your skills! Click monkeys to build your multiplier and score points.
+                </Text>
+              </VStack>
             </Box>
           </VStack>
         )
