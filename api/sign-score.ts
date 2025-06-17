@@ -1,8 +1,9 @@
-import { ethers } from "ethers";
+import { Wallet } from 'ethers';
+import { isAddress, solidityKeccak256, arrayify } from 'ethers/lib/utils';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 const PRIVATE_KEY = process.env.SIGNER_PRIVATE_KEY;
-const wallet = new ethers.Wallet(PRIVATE_KEY!);
+const wallet = new Wallet(PRIVATE_KEY!);
 
 // Maximum allowed score to prevent cheating
 const MAX_SCORE = 1000;
@@ -21,7 +22,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { player, score, nonce } = req.body;
 
     // Input validation
-    if (!ethers.utils.isAddress(player)) {
+    if (!isAddress(player)) {
       return res.status(400).json({ error: "Invalid player address" });
     }
 
@@ -55,11 +56,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Sign the message
-    const messageHash = ethers.utils.solidityKeccak256(
+    const messageHash = solidityKeccak256(
       ["address", "uint256", "uint256"],
       [player, score, nonce]
     );
-    const messageHashBytes = ethers.utils.arrayify(messageHash);
+    const messageHashBytes = arrayify(messageHash);
     const signature = await wallet.signMessage(messageHashBytes);
 
     // Log successful submission
