@@ -21,12 +21,6 @@ const MONKEY_LIFETIME_START = 2000 // ms
 const MONKEY_LIFETIME_END = 800 // ms
 const CRUSHED_DISPLAY_TIME = 400; // ms
 const SCORE_TO_BEAT = 50;
-const PRIZE_POOL_PER_PLAY = 2; // $APE per play goes to prize pool
-const PRIZE_POOL_WINNER_SHARE = 0.75; // 75% of prize pool goes to winner
-// For now, use a mock number of plays for the prize pool calculation
-const MOCK_PLAYS = 25; // 2 $APE per play * 25 = 50 $APE total
-const TOTAL_PRIZE_POOL = PRIZE_POOL_PER_PLAY * MOCK_PLAYS;
-const DISPLAYED_PRIZE_POOL = (TOTAL_PRIZE_POOL * PRIZE_POOL_WINNER_SHARE).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const GAME_COST_WEI = ethers.utils.parseEther('2.5');
 
 // Responsive, percentage-based coordinates for each hole
@@ -621,7 +615,7 @@ const Game = () => {
                 <Text color="yellow.400">|</Text>
                 <VStack spacing={0}>
                   <Text color="gray.400" fontSize={{ base: "xs", md: "sm" }}>PRIZE POOL</Text>
-                  <Text color="green.400" fontSize={{ base: "lg", md: "xl" }} fontWeight="bold" fontFamily="mono">{DISPLAYED_PRIZE_POOL} $APE</Text>
+                  <Text color="green.400" fontSize={{ base: "lg", md: "xl" }} fontWeight="bold" fontFamily="mono">{prizePool ? `${prizePool} $APE` : '...'}</Text>
                 </VStack>
               </HStack>
             </Box>
