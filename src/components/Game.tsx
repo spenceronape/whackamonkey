@@ -82,6 +82,7 @@ const Game = () => {
   const [multiplier, setMultiplier] = useState(1);
   const MAX_MULTIPLIER = 5;
   const [contract, setContract] = useState<Contract | null>(null);
+  const [readContract, setReadContract] = useState<Contract | null>(null);
   const [startingGame, setStartingGame] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
   const [submittingScore, setSubmittingScore] = useState(false);
@@ -213,25 +214,30 @@ const Game = () => {
     };
   }, []);
 
+  // Setup contracts for read and write
   useEffect(() => {
-    if (isConnected && walletClient) {
+    if (walletClient) {
       const provider = new ethers.providers.Web3Provider(walletClient as any);
-      const c = new Contract(WHACK_A_MONKEY_ADDRESS, WHACK_A_MONKEY_ABI, provider);
-      setContract(c);
+      const signer = provider.getSigner();
+      const writeContract = new Contract(WHACK_A_MONKEY_ADDRESS, WHACK_A_MONKEY_ABI, signer);
+      const readOnlyContract = new Contract(WHACK_A_MONKEY_ADDRESS, WHACK_A_MONKEY_ABI, provider);
+      setContract(writeContract);
+      setReadContract(readOnlyContract);
       // Fetch high score
-      c.highScore().then((score: any) => setHighScore(Number(score))).catch(() => setHighScore(null));
+      readOnlyContract.highScore().then((score: any) => setHighScore(Number(score))).catch(() => setHighScore(null));
     } else {
       setContract(null);
+      setReadContract(null);
       setHighScore(null);
     }
-  }, [isConnected, walletClient]);
+  }, [walletClient]);
 
-  // Fetch high score every 10s for live updates
+  // Fetch high score every 10s for live updates (use readContract)
   useEffect(() => {
-    if (!contract) return;
+    if (!readContract) return;
     const fetchHighScore = async () => {
       try {
-        const score = await contract.highScore();
+        const score = await readContract.highScore();
         setHighScore(Number(score));
       } catch {
         setHighScore(null);
@@ -240,7 +246,7 @@ const Game = () => {
     fetchHighScore();
     const interval = setInterval(fetchHighScore, 10000);
     return () => clearInterval(interval);
-  }, [contract]);
+  }, [readContract]);
 
   const startGame = useCallback(async () => {
     setStartError(null);
@@ -317,11 +323,11 @@ const Game = () => {
   // Fetch prize pool and high score from contract
   useEffect(() => {
     const fetchStats = async () => {
-      if (contract) {
+      if (readContract) {
         try {
-          await contract.getPrizePool();
-          await contract.highScore();
-          await contract.highScoreHolder();
+          await readContract.getPrizePool();
+          await readContract.highScore();
+          await readContract.highScoreHolder();
         } catch (err: unknown) {
           if (err instanceof Error) {
             // Optionally log err.message
@@ -333,14 +339,14 @@ const Game = () => {
     // Optionally, poll every 10s for live updates
     const interval = setInterval(fetchStats, 10000);
     return () => clearInterval(interval);
-  }, [contract]);
+  }, [readContract]);
 
   // Fetch live prize pool and update every 10s
   useEffect(() => {
     const fetchPrizePool = async () => {
-      if (contract) {
+      if (readContract) {
         try {
-          const pool = await contract.getPrizePool();
+          const pool = await readContract.getPrizePool();
           // Calculate winner's share (75%)
           const winnerShare = ethers.utils.formatEther(pool.mul(75).div(100));
           setPrizePool(winnerShare);
@@ -352,7 +358,7 @@ const Game = () => {
     fetchPrizePool();
     const interval = setInterval(fetchPrizePool, 10000);
     return () => clearInterval(interval);
-  }, [contract]);
+  }, [readContract]);
 
   // Handler for user-initiated validation
   const handleValidateScore = async () => {
