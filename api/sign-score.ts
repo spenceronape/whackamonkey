@@ -1,6 +1,5 @@
 import { Wallet, ethers } from 'ethers';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { randomBytes } from 'crypto';
 
 const PRIVATE_KEY = process.env.SIGNER_PRIVATE_KEY;
 const wallet = new Wallet(PRIVATE_KEY!);
@@ -10,33 +9,15 @@ const MAX_SCORE = 2000;
 // Minimum time between submissions (in seconds) - reduced for better UX
 const MIN_SUBMISSION_INTERVAL = 10;
 
-// In-memory cache for recent submissions
+// In-memory cache for recent submissions (rate limiting only)
 const recentSubmissions = new Map<string, number>();
-// Track active sessions per player (session expires after 1 hour)
-const playerSessions = new Map<string, { sessionId: number; lastNonce: number; timestamp: number }>();
 
-function generateSecureNonce(player: string): number {
-  const now = Math.floor(Date.now() / 1000);
-  const sessionTimeout = 3600; // 1 hour session timeout
-  
-  // Get or create session
-  let session = playerSessions.get(player);
-  if (!session || (now - session.timestamp) > sessionTimeout) {
-    // Create new session with very high timestamp-based session ID
-    // Use current timestamp * 1000000 to ensure we're always above any previous nonce
-    const sessionId = now * 1000000 + Math.floor(Math.random() * 1000000);
-    session = { sessionId, lastNonce: 0, timestamp: now };
-    playerSessions.set(player, session);
-  }
-  
-  // Generate nonce based on session ID and increment
-  session.lastNonce += 1;
-  session.timestamp = now; // Update session timestamp
-  
-  // The session ID is already very high, just add the nonce counter
-  const nonce = session.sessionId + session.lastNonce;
-  
-  return nonce;
+function generateTimestampNonce(): number {
+  // Get current time in microseconds
+  const now = Date.now() * 1000;
+  // Add a random value (0-999) to ensure uniqueness
+  const random = Math.floor(Math.random() * 1000);
+  return now + random;
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -91,15 +72,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         recentSubmissions.delete(addr);
       }
     }
-    // Clean up expired sessions (older than 1 hour)
-    for (const [addr, session] of playerSessions.entries()) {
-      if ((now - session.timestamp) > 3600) {
-        playerSessions.delete(addr);
-      }
-    }
 
-    // Generate a unique, secure nonce for this player
-    const nonce = generateSecureNonce(player);
+    // Generate a unique, stateless, timestamp-based nonce for this player
+    const nonce = generateTimestampNonce();
     console.log(`Generated nonce for player ${player}: ${nonce}`);
 
     // Sign the message
