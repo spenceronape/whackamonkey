@@ -405,7 +405,17 @@ const Game = () => {
     setSubmittingScore(true);
     setSubmitError(null);
     try {
-      const nonceNumber = parseInt(nonce, 10);
+      // Safely convert nonce to number, handling potential overflow
+      let nonceNumber: number;
+      try {
+        nonceNumber = parseInt(nonce, 10);
+        if (isNaN(nonceNumber) || !Number.isSafeInteger(nonceNumber)) {
+          throw new Error('Nonce value too large or invalid');
+        }
+      } catch (parseError) {
+        throw new Error('Invalid nonce format');
+      }
+      
       if (!verifySignature(playerAddress, points, nonceNumber, scoreSignature)) {
         throw new Error('Invalid signature');
       }

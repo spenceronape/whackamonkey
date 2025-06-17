@@ -18,7 +18,7 @@ const usedNonces = new Map<string, Set<string>>();
 function generateUniqueNonce(player: string): string {
   let nonce: string;
   do {
-    nonce = randomBytes(8).toString('hex'); // 64-bit hex string
+    nonce = randomBytes(4).toString('hex'); // 32-bit hex string (fits in JS safe integers)
   } while (usedNonces.get(player)?.has(nonce));
   if (!usedNonces.has(player)) usedNonces.set(player, new Set());
   usedNonces.get(player)!.add(nonce);
