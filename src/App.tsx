@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Box, Flex, Text, HStack, VStack, useDisclosure, Button } from '@chakra-ui/react'
-import { useWalletClient } from 'wagmi'
+import { useWalletClient, useAccount } from 'wagmi'
 import { ethers, Contract } from 'ethers'
 import { WHACK_A_MONKEY_ADDRESS } from './components/contractAddress'
 import WHACK_A_MONKEY_ABI from './components/WhackAMonkeyABI.json'
 import Game from './components/Game'
+import AdminPanel from './components/AdminPanel'
 import '@use-glyph/sdk-react/style.css'
 import { FaXTwitter, FaTelegram, FaGlobe } from 'react-icons/fa6'
 import { FaGithub } from 'react-icons/fa'
@@ -13,11 +14,17 @@ import { Global } from '@emotion/react';
 
 function App() {
   const { data: walletClient } = useWalletClient();
+  const { address } = useAccount();
   const [contract, setContract] = useState<Contract | null>(null);
   const [prizePool, setPrizePool] = useState<string | null>(null);
   const [highScore, setHighScore] = useState<string | null>(null);
   const [highScoreHolder, setHighScoreHolder] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
   const { isOpen, onOpen, onClose } = useDisclosure();
+
+  // Admin wallet address
+  const ADMIN_WALLET_ADDRESS = '0x4d6f6f4ef5e5f74074Ad0798CE44436491750A2E';
 
   // Set up contract (read-only, use walletClient if available, else fallback to default provider)
   useEffect(() => {
@@ -30,14 +37,40 @@ function App() {
     }
   }, [walletClient]);
 
+  // Check admin access
+  useEffect(() => {
+    const checkAdminAccess = async () => {
+      if (contract && address) {
+        try {
+          // Check if current wallet is the admin wallet
+          const isAdminWallet = address.toLowerCase() === ADMIN_WALLET_ADDRESS.toLowerCase();
+          
+          if (isAdminWallet) {
+            // Check if admin wallet is an operator
+            const isOperator = await (contract as any).isOperator(ADMIN_WALLET_ADDRESS);
+            setIsAdmin(isOperator);
+          } else {
+            setIsAdmin(false);
+          }
+        } catch (err) {
+          setIsAdmin(false);
+        }
+      } else {
+        setIsAdmin(false);
+      }
+    };
+    
+    checkAdminAccess();
+  }, [contract, address]);
+
   // Fetch prize pool and high score from contract
   useEffect(() => {
     const fetchStats = async () => {
       if (contract) {
         try {
           const pool = await contract.getPrizePool();
-          // Calculate winner's share (75%)
-          const winnerShare = ethers.utils.formatEther(pool.mul(75).div(100));
+          // Calculate winner's share (50%)
+          const winnerShare = ethers.utils.formatEther(pool.mul(50).div(100));
           setPrizePool(winnerShare);
           const score = await contract.highScore();
           setHighScore(score.toString());
@@ -133,15 +166,31 @@ function App() {
               </VStack>
             </HStack>
           </Flex>
-          {/* Hall of Fame Button */}
+          {/* Hall of Fame and Admin Buttons */}
           <HStack spacing={4}>
             <Button colorScheme="yellow" variant="outline" size="sm" onClick={onOpen}>
               Hall of Fame
             </Button>
+            {isAdmin && (
+              <Button 
+                colorScheme="red" 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setShowAdminPanel(!showAdminPanel)}
+              >
+                {showAdminPanel ? 'Hide Admin' : 'Admin Panel'}
+              </Button>
+            )}
           </HStack>
         </Flex>
       </Box>
       <HallOfFameModal isOpen={isOpen} onClose={onClose} />
+      {/* Admin Panel */}
+      {showAdminPanel && isAdmin && (
+        <Box w="100%" bg="#1D0838" px={{ base: 2, md: 8 }} py={4}>
+          <AdminPanel />
+        </Box>
+      )}
       {/* Main Game */}
       <Box minH="100vh" w="100vw" bg="#1D0838" pt={0} m={0} p={0}>
         <Game />
@@ -151,7 +200,7 @@ function App() {
             <Box color="gray.400" fontSize="sm" textAlign={{ base: 'center', md: 'left' }}>
               <Text fontSize="md" color="yellow.200" fontWeight="bold">© 2025 Mister Monkee Labs Worldwide</Text>
               <Text fontSize="xs" color="gray.400" mt={1}>
-                *High Score may claim 75% of current pooled $APE, minus operator fees and buffer for the next winner.
+                *High Score may claim 50% of pooled $APE, minus operator fee, buffer kept for future winners.
               </Text>
             </Box>
             <HStack spacing={4} mt={{ base: 3, md: 0 }} justify="flex-end">
