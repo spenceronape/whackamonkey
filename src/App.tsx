@@ -9,6 +9,7 @@ import '@use-glyph/sdk-react/style.css'
 import { FaXTwitter, FaTelegram, FaGlobe } from 'react-icons/fa6'
 import { FaGithub } from 'react-icons/fa'
 import HallOfFameModal from './components/HallOfFameModal'
+import { Global } from '@emotion/react';
 
 function App() {
   const { data: walletClient } = useWalletClient();
@@ -55,6 +56,18 @@ function App() {
 
   return (
     <>
+      <Global
+        styles={`
+          html, body, #root {
+            background: #1D0838 !important;
+            min-height: 100vh;
+            width: 100vw;
+            margin: 0;
+            padding: 0;
+            border: none;
+          }
+        `}
+      />
       {/* Header Navigation Bar */}
       <Box as="header" w="100%" bg="#1D0838" px={{ base: 2, md: 8 }} py={{ base: 2, md: 4 }} zIndex={100} position="relative">
         <Flex align="center" justify="space-between" maxW="1200px" mx="auto">
