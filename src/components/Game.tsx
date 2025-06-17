@@ -752,10 +752,23 @@ const Game = () => {
             >
               Share this on X
             </Button>
+            <Button
+              as="a"
+              href="https://mister-monkee-fan-club.nfts2.me/"
+              target="_blank"
+              colorScheme="purple"
+              variant="outline"
+              fontWeight="bold"
+              fontSize="lg"
+              mt={2}
+              aria-label="Get Mister Monkee Fan Club Pass"
+            >
+              SO YOU DIDN'T WIN, OH WELL PAL, GO GET A FAN CLUB PASS ON ME.
+            </Button>
             <Button 
               colorScheme="yellow" 
               size="lg" 
-              onClick={startGame}
+              onClick={() => window.location.reload()}
               w="full"
               h={{ base: "48px", md: "60px" }}
               fontSize={{ base: "md", md: "xl" }}
@@ -855,14 +868,7 @@ const Game = () => {
                   boxShadow="0 0 16px #FFD600"
                   aria-label="Play Again"
                   mt={2}
-                  onClick={() => {
-                    setPrizeClaimed(false);
-                    setScoreSignature(null);
-                    setSignScoreError(null);
-                    setSubmitError(null);
-                    setGameState('idle');
-                    setNonce(generateNonce());
-                  }}
+                  onClick={() => window.location.reload()}
                 >
                   Play Again?
                 </Button>
