@@ -16,11 +16,9 @@ const GAME_DURATION = 60 // seconds
 const HOLE_COUNT = 12
 const MIN_ACTIVE_HOLES = 3
 const MAX_ACTIVE_HOLES = 6
-const GAME_COST = '2.50' // APE tokens (2 $APE to prize pool, 0.50 $APE to operator)
 const MONKEY_LIFETIME_START = 2000 // ms
 const MONKEY_LIFETIME_END = 800 // ms
 const CRUSHED_DISPLAY_TIME = 400; // ms
-const GAME_COST_WEI = ethers.utils.parseEther('2.5');
 
 // Responsive, percentage-based coordinates for each hole
 const HOLE_POSITIONS = [
@@ -98,6 +96,11 @@ const Game = () => {
   const [highScore, setHighScore] = useState<number | null>(null);
   const [minPrizePoolBuffer, setMinPrizePoolBuffer] = useState<string | null>(null);
   const [lastValidationTime, setLastValidationTime] = useState<number>(0);
+  
+  // Configurable game costs (fetched from contract)
+  const [gameCost, setGameCost] = useState<string>('2.5'); // Default fallback
+  const [gameCostWei, setGameCostWei] = useState<string>('0');
+  const [prizePoolShare, setPrizePoolShare] = useState<string>('75'); // Default fallback (75%)
   
   // Tutorial state
   const [tutorialTimeLeft, setTutorialTimeLeft] = useState(30); // 30 seconds for tutorial
@@ -294,12 +297,34 @@ const Game = () => {
     return () => clearInterval(interval);
   }, [readContract]);
 
+  // Fetch game cost and protocol fee from contract
+  useEffect(() => {
+    const fetchGameCosts = async () => {
+      if (readContract) {
+        try {
+          const cost = await (readContract as any).gameCost();
+          const fee = await (readContract as any).protocolFee();
+          const share = await (readContract as any).prizePoolShare();
+          setGameCost(ethers.utils.formatEther(cost));
+          setGameCostWei(cost.toString());
+          setPrizePoolShare(ethers.utils.formatEther(share.mul(100))); // Convert to percentage
+        } catch (err) {
+          // Keep default values if contract call fails
+          console.warn('Failed to fetch game costs from contract:', err);
+        }
+      }
+    };
+    fetchGameCosts();
+    const interval = setInterval(fetchGameCosts, 10000);
+    return () => clearInterval(interval);
+  }, [readContract]);
+
   const startGame = useCallback(async () => {
     setStartError(null);
     if (!contract) return;
     setStartingGame(true);
     try {
-      const tx = await contract.startGame({ value: GAME_COST_WEI });
+      const tx = await contract.startGame({ value: gameCostWei });
       await tx.wait();
       setGameState('playing');
       setPoints(0);
@@ -327,7 +352,7 @@ const Game = () => {
       }
     }
     setStartingGame(false);
-  }, [contract]);
+  }, [contract, gameCostWei]);
 
   const handleHoleClick = (holeIndex: number) => {
     if (gameState === 'tutorial') {
@@ -398,8 +423,9 @@ const Game = () => {
       if (readContract) {
         try {
           const pool = await readContract.getPrizePool();
-          // Calculate winner's share (75%)
-          const winnerShare = ethers.utils.formatEther(pool.mul(75).div(100));
+          // Calculate winner's share using dynamic percentage
+          const sharePercentage = parseFloat(prizePoolShare) / 100;
+          const winnerShare = ethers.utils.formatEther(pool.mul(Math.floor(sharePercentage * 100)).div(100));
           setPrizePool(winnerShare);
         } catch (err) {
           setPrizePool(null);
@@ -409,7 +435,7 @@ const Game = () => {
     fetchPrizePool();
     const interval = setInterval(fetchPrizePool, 10000);
     return () => clearInterval(interval);
-  }, [readContract]);
+  }, [readContract, prizePoolShare]);
 
   // Handler for user-initiated validation
   const handleValidateScore = async () => {
@@ -690,7 +716,7 @@ const Game = () => {
               TEST YOUR REFLEXES, PAL, YOU COULD WIN BIG!
             </Text>
             <VStack spacing={2} bg="whiteAlpha.100" p={{ base: 2, md: 4 }} borderRadius="md" w="full">
-              <Text fontSize={{ base: "md", md: "lg" }} fontWeight="bold" color="yellow.300">STEP RIGHT UP FOR ONLY {GAME_COST} $APE</Text>
+              <Text fontSize={{ base: "md", md: "lg" }} fontWeight="bold" color="yellow.300">STEP RIGHT UP FOR ONLY {gameCost} $APE</Text>
               <Text color="gray.400" fontSize={{ base: "sm", md: "md" }}>BASH IN MY BEAUTIFUL FACE TO EARN POINTS AND WIN!</Text>
             </VStack>
             <VStack spacing={3} w="full">
