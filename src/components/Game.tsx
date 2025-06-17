@@ -455,19 +455,33 @@ const Game = () => {
     setLastValidationTime(now);
     
     try {
+      // Clear any existing signature/nonce before getting new ones
+      setScoreSignature(null);
+      setNonce(null);
+      
       // Call signScore, which now returns both signature and nonce
-      const { signature, nonce } = await signScore(playerAddress, points);
-      console.log('Received nonce from server:', nonce, 'Type:', typeof nonce);
+      const { signature, nonce, timestamp } = await signScore(playerAddress, points);
+      console.log('Received nonce from server:', nonce, 'Type:', typeof nonce, 'Timestamp:', timestamp);
+      
+      // Check if nonce is too old (more than 30 minutes)
+      const nonceAge = Date.now() - (timestamp * 1000);
+      if (nonceAge > 30 * 60 * 1000) { // 30 minutes
+        throw new Error('Nonce expired. Please try again.');
+      }
+      
       setScoreSignature(signature);
       setNonce(nonce);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to validate score';
       if (errorMessage.includes('429') || errorMessage.includes('Too many submissions')) {
         setSignScoreError('Please wait a moment before trying again. Rate limit exceeded.');
+      } else if (errorMessage.includes('expired')) {
+        setSignScoreError('Validation expired. Please try again.');
       } else {
         setSignScoreError(errorMessage);
       }
       setScoreSignature(null);
+      setNonce(null);
     } finally {
       setSigningScore(false);
     }
@@ -503,8 +517,11 @@ const Game = () => {
       
       if (errorMessage.toLowerCase().includes('old nonce')) {
         setSubmitError("Score validation expired. Please validate your score again to claim your prize!");
+        // Clear cached nonce and signature to force re-validation
         setScoreSignature(null);
         setNonce(null);
+        // Reset validation time to allow immediate re-validation
+        setLastValidationTime(0);
       } else if (errorMessage.toLowerCase().includes('insufficient') || 
                  errorMessage.toLowerCase().includes('funds') ||
                  errorMessage.toLowerCase().includes('balance') ||
