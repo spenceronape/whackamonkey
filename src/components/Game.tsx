@@ -987,12 +987,6 @@ const Game = () => {
           handleHoleClick(0); // Assuming the first hole is clicked
         }
       }
-      
-      // Temporary testing: Ctrl+Shift+W to simulate win
-      if (event.ctrlKey && event.shiftKey && event.key === 'W') {
-        event.preventDefault();
-        simulateWin();
-      }
     };
 
     const handleKeyUp = (e: Event): void => {
@@ -1010,7 +1004,7 @@ const Game = () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [isWhacking, handleHoleClick, simulateWin]);
+  }, [isWhacking, handleHoleClick]);
 
   return (
     <Box minH="calc(100vh - 80px)" display="flex" flexDirection="column" justifyContent="center" alignItems="center" bg="#1D0838" flexGrow={1} mt={{ base: "-5vh", md: "-15vh" }}>
@@ -1028,8 +1022,11 @@ const Game = () => {
           fontSize="sm" 
           fontWeight="bold"
           zIndex={1000}
+          cursor="pointer"
+          onClick={simulateWin}
+          _hover={{ bg: "yellow.400" }}
         >
-          🧪 TEST MODE: Press Ctrl+Shift+W to simulate win
+          🧪 TEST MODE: Click to simulate win
         </Box>
       )}
       
