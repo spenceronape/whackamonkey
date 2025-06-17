@@ -8,9 +8,11 @@ import Game from './components/Game'
 import AdminPanel from './components/AdminPanel'
 import '@use-glyph/sdk-react/style.css'
 import { FaXTwitter, FaTelegram, FaGlobe } from 'react-icons/fa6'
-import { FaGithub } from 'react-icons/fa'
+import { FaGithub, FaFileAlt } from 'react-icons/fa'
 import HallOfFameModal from './components/HallOfFameModal'
 import { Global } from '@emotion/react';
+import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
+import TermsAndConditions from './components/TermsAndConditions';
 
 function App() {
   const { data: walletClient } = useWalletClient();
@@ -90,142 +92,151 @@ function App() {
   }, [contract]);
 
   return (
-    <>
-      <Global
-        styles={`
-          html, body, #root {
-            background: #1D0838 !important;
-            min-height: 100vh;
-            width: 100vw;
-            margin: 0;
-            padding: 0;
-            border: none;
-          }
-        `}
-      />
-      {/* Header Navigation Bar */}
-      <Box as="header" w="100%" bg="#1D0838" px={{ base: 2, md: 8 }} py={{ base: 2, md: 4 }} zIndex={100} position="relative">
-        <Flex align="center" justify="space-between" maxW="1200px" mx="auto">
-          {/* Logo/Title and Stats */}
-          <Flex align="center">
-            <Box position="relative" h={{ base: '36px', md: '48px' }}>
-              {/* Purple circle behind the A */}
-              <Box
-                position="absolute"
-                left={{ base: '38px', md: '52px' }}
-                top={{ base: '2px', md: '4px' }}
-                w={{ base: '28px', md: '38px' }}
-                h={{ base: '28px', md: '38px' }}
-                bg="#a259e6"
-                borderRadius="full"
-                zIndex={1}
-              />
-              <Text
-                as="span"
-                fontFamily="Luckiest Guy, Impact, 'Comic Sans MS', cursive, sans-serif"
-                fontWeight="bold"
-                fontSize={{ base: '2xl', md: '4xl' }}
-                color="#FFD600"
-                letterSpacing={{ base: '1px', md: '2px' }}
-                textShadow="2px 2px 0 #6d1a7b, 0 2px 8px #000"
-                zIndex={2}
-                position="relative"
-                cursor="pointer"
-                onClick={() => window.location.reload()}
-                _hover={{ transform: 'scale(1.05)', transition: 'all 0.2s' }}
-              >
-                Whack <Box as="span" color="#FFD600" position="relative" zIndex={2}>A</Box> Monkey
-              </Text>
-            </Box>
-            {/* Stats next to title */}
-            <HStack
-              spacing={{ base: 2, md: 6 }}
-              ml={{ base: 2, md: 8 }}
-              flexWrap="wrap"
-              alignItems={{ base: 'flex-start', md: 'center' }}
-              flexDirection={{ base: 'column', md: 'row' }}
-            >
-              <VStack spacing={0} align="start" minW={{ base: '120px', md: 'unset' }}>
-                <Text color="green.300" fontWeight="bold" fontSize="sm">Prize Pool</Text>
-                <Text color="green.100" fontSize="lg" fontWeight="extrabold">
-                  {prizePool !== null ? `${prizePool} $APE` : '...'}
+    <BrowserRouter>
+      <>
+        <Global
+          styles={`
+            html, body, #root {
+              background: #1D0838 !important;
+              min-height: 100vh;
+              width: 100vw;
+              margin: 0;
+              padding: 0;
+              border: none;
+            }
+          `}
+        />
+        {/* Header Navigation Bar */}
+        <Box as="header" w="100%" bg="#1D0838" px={{ base: 2, md: 8 }} py={{ base: 2, md: 4 }} zIndex={100} position="relative">
+          <Flex align="center" justify="space-between" maxW="1200px" mx="auto">
+            {/* Logo/Title and Stats */}
+            <Flex align="center">
+              <Box position="relative" h={{ base: '36px', md: '48px' }}>
+                {/* Purple circle behind the A */}
+                <Box
+                  position="absolute"
+                  left={{ base: '38px', md: '52px' }}
+                  top={{ base: '2px', md: '4px' }}
+                  w={{ base: '28px', md: '38px' }}
+                  h={{ base: '28px', md: '38px' }}
+                  bg="#a259e6"
+                  borderRadius="full"
+                  zIndex={1}
+                />
+                <Text
+                  as="span"
+                  fontFamily="Luckiest Guy, Impact, 'Comic Sans MS', cursive, sans-serif"
+                  fontWeight="bold"
+                  fontSize={{ base: '2xl', md: '4xl' }}
+                  color="#FFD600"
+                  letterSpacing={{ base: '1px', md: '2px' }}
+                  textShadow="2px 2px 0 #6d1a7b, 0 2px 8px #000"
+                  zIndex={2}
+                  position="relative"
+                  cursor="pointer"
+                  onClick={() => window.location.reload()}
+                  _hover={{ transform: 'scale(1.05)', transition: 'all 0.2s' }}
+                >
+                  Whack <Box as="span" color="#FFD600" position="relative" zIndex={2}>A</Box> Monkey
                 </Text>
-              </VStack>
-              <VStack spacing={0} align="start" minW={{ base: '120px', md: 'unset' }}>
-                <Text color="purple.300" fontWeight="bold" fontSize="sm">High Score</Text>
-                <HStack spacing={1} align="baseline" flexWrap="wrap">
-                  <Text color="purple.100" fontSize="lg" fontWeight="extrabold">
-                    {highScore !== null ? highScore : '...'}
-                  </Text>
-                  {highScoreHolder && highScore !== null && (
-                    <Text color="gray.400" fontSize="xs" ml={1} wordBreak="break-all">
-                      ({highScoreHolder.slice(0, 6)}...{highScoreHolder.slice(-4)})
-                    </Text>
-                  )}
-                </HStack>
-              </VStack>
-            </HStack>
-          </Flex>
-          {/* Hall of Fame and Admin Buttons */}
-          <HStack spacing={4}>
-            <Button colorScheme="yellow" variant="outline" size="sm" onClick={onOpen}>
-              Hall of Fame
-            </Button>
-            {isAdmin && (
-              <Button 
-                colorScheme="red" 
-                variant="outline" 
-                size="sm" 
-                onClick={() => setShowAdminPanel(!showAdminPanel)}
+              </Box>
+              {/* Stats next to title */}
+              <HStack
+                spacing={{ base: 2, md: 6 }}
+                ml={{ base: 2, md: 8 }}
+                flexWrap="wrap"
+                alignItems={{ base: 'flex-start', md: 'center' }}
+                flexDirection={{ base: 'column', md: 'row' }}
               >
-                {showAdminPanel ? 'Hide Admin' : 'Admin Panel'}
+                <VStack spacing={0} align="start" minW={{ base: '120px', md: 'unset' }}>
+                  <Text color="green.300" fontWeight="bold" fontSize="sm">Prize Pool</Text>
+                  <Text color="green.100" fontSize="lg" fontWeight="extrabold">
+                    {prizePool !== null ? `${prizePool} $APE` : '...'}
+                  </Text>
+                </VStack>
+                <VStack spacing={0} align="start" minW={{ base: '120px', md: 'unset' }}>
+                  <Text color="purple.300" fontWeight="bold" fontSize="sm">High Score</Text>
+                  <HStack spacing={1} align="baseline" flexWrap="wrap">
+                    <Text color="purple.100" fontSize="lg" fontWeight="extrabold">
+                      {highScore !== null ? highScore : '...'}
+                    </Text>
+                    {highScoreHolder && highScore !== null && (
+                      <Text color="gray.400" fontSize="xs" ml={1} wordBreak="break-all">
+                        ({highScoreHolder.slice(0, 6)}...{highScoreHolder.slice(-4)})
+                      </Text>
+                    )}
+                  </HStack>
+                </VStack>
+              </HStack>
+            </Flex>
+            {/* Hall of Fame and Admin Buttons */}
+            <HStack spacing={4}>
+              <Button colorScheme="yellow" variant="outline" size="sm" onClick={onOpen}>
+                Hall of Fame
               </Button>
-            )}
-          </HStack>
-        </Flex>
-      </Box>
-      <HallOfFameModal isOpen={isOpen} onClose={onClose} />
-      {/* Admin Panel */}
-      {showAdminPanel && isAdmin && (
-        <Box w="100%" bg="#1D0838" px={{ base: 2, md: 8 }} py={4}>
-          <AdminPanel />
-        </Box>
-      )}
-      {/* Main Game */}
-      <Box minH="100vh" w="100vw" bg="#1D0838" pt={0} m={0} p={0}>
-        <Game />
-        {/* Bottom Navigation Bar */}
-        <Box as="footer" position="fixed" left={0} bottom={0} w="100vw" bg="#1D0838" px={{ base: 2, md: 8 }} py={4} mb={{ base: 4, md: 6 }} zIndex={200} m={0} p={0}>
-          <Flex align="flex-end" justify="space-between" maxW="1200px" mx="auto" direction={{ base: 'column', md: 'row' }}>
-            <Box color="gray.400" fontSize="sm" textAlign={{ base: 'center', md: 'left' }}>
-              <Text fontSize="md" color="yellow.200" fontWeight="bold">© 2025 Mister Monkee Labs Worldwide</Text>
-              <Text fontSize="xs" color="gray.400" mt={1}>
-                *High Score may claim 50% of pooled $APE, minus operator fee, buffer kept for future winners.
-              </Text>
-              <Text fontSize="xs" color="yellow.300" mt={2}>
-                <a href="/TERMS_AND_CONDITIONS.md" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline' }}>
-                  Terms and Conditions
-                </a>
-              </Text>
-            </Box>
-            <HStack spacing={4} mt={{ base: 3, md: 0 }} justify="flex-end">
-              <Box as="a" href="https://x.com/monkeeMister/" target="_blank" rel="noopener noreferrer" aria-label="X (Twitter)">
-                <FaXTwitter size={28} color="#FFD600" />
-              </Box>
-              <Box as="a" href="https://t.me/mistermonkeeverse" target="_blank" rel="noopener noreferrer" aria-label="Telegram">
-                <FaTelegram size={28} color="#FFD600" />
-              </Box>
-              <Box as="a" href="https://its.mistermonkee.com" target="_blank" rel="noopener noreferrer" aria-label="Web">
-                <FaGlobe size={28} color="#FFD600" />
-              </Box>
-              <Box as="a" href="https://github.com/spenceronape/whackamonkey/" target="_blank" rel="noopener noreferrer" aria-label="GitHub">
-                <FaGithub size={28} color="#FFD600" />
-              </Box>
+              {isAdmin && (
+                <Button 
+                  colorScheme="red" 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setShowAdminPanel(!showAdminPanel)}
+                >
+                  {showAdminPanel ? 'Hide Admin' : 'Admin Panel'}
+                </Button>
+              )}
             </HStack>
           </Flex>
         </Box>
-      </Box>
-    </>
+        <HallOfFameModal isOpen={isOpen} onClose={onClose} />
+        <Routes>
+          <Route path="/" element={
+            <>
+              {/* Main Game and Admin Panel */}
+              {showAdminPanel && isAdmin && (
+                <Box w="100%" bg="#1D0838" px={{ base: 2, md: 8 }} py={4}>
+                  <AdminPanel />
+                </Box>
+              )}
+              <Game />
+              {/* Bottom Navigation Bar */}
+              <Box as="footer" position="fixed" left={0} bottom={0} w="100vw" bg="#1D0838" px={{ base: 2, md: 8 }} py={4} mb={{ base: 4, md: 6 }} zIndex={200} m={0} p={0}>
+                <Flex align="flex-end" justify="space-between" maxW="1200px" mx="auto" direction={{ base: 'column', md: 'row' }}>
+                  <Box color="gray.400" fontSize="sm" textAlign={{ base: 'center', md: 'left' }}>
+                    <Text fontSize="md" color="yellow.200" fontWeight="bold">© 2025 Mister Monkee Labs Worldwide</Text>
+                    <Text fontSize="xs" color="gray.400" mt={1}>
+                      *High Score may claim 50% of pooled $APE, minus operator fee, buffer kept for future winners.
+                    </Text>
+                    <Text fontSize="xs" color="yellow.300" mt={2}>
+                      <Link to="/terms" style={{ textDecoration: 'underline' }}>
+                        Terms and Conditions
+                      </Link>
+                    </Text>
+                  </Box>
+                  <HStack spacing={4} mt={{ base: 3, md: 0 }} justify="flex-end">
+                    <Box as="a" href="https://x.com/monkeeMister/" target="_blank" rel="noopener noreferrer" aria-label="X (Twitter)">
+                      <FaXTwitter size={28} color="#FFD600" />
+                    </Box>
+                    <Box as="a" href="https://t.me/mistermonkeeverse" target="_blank" rel="noopener noreferrer" aria-label="Telegram">
+                      <FaTelegram size={28} color="#FFD600" />
+                    </Box>
+                    <Box as="a" href="https://its.mistermonkee.com" target="_blank" rel="noopener noreferrer" aria-label="Web">
+                      <FaGlobe size={28} color="#FFD600" />
+                    </Box>
+                    <Box as="a" href="https://github.com/spenceronape/whackamonkey/" target="_blank" rel="noopener noreferrer" aria-label="GitHub">
+                      <FaGithub size={28} color="#FFD600" />
+                    </Box>
+                    <Box as="a" href="https://apescan.io/address/0x5fEeD9189781b25eA4Cd9B9EdF3756F183D81aDb" target="_blank" rel="noopener noreferrer" aria-label="Contract on Apescan">
+                      <FaFileAlt size={28} color="#FFD600" />
+                    </Box>
+                  </HStack>
+                </Flex>
+              </Box>
+            </>
+          } />
+          <Route path="/terms" element={<TermsAndConditions />} />
+        </Routes>
+      </>
+    </BrowserRouter>
   )
 }
 
