@@ -241,7 +241,17 @@ const Game = () => {
       setMisses(0);
       setMultiplier(1);
     } catch (err: unknown) {
-      setStartError(err instanceof Error ? err.message : 'Failed to start game' as any);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to start game';
+      
+      // Check for insufficient funds error
+      if (errorMessage.toLowerCase().includes('insufficient') || 
+          errorMessage.toLowerCase().includes('funds') ||
+          errorMessage.toLowerCase().includes('balance') ||
+          errorMessage.toLowerCase().includes('gas')) {
+        setStartError("THIS AIN'T A CHARITY, PAL. FUND YOUR WALLET.");
+      } else {
+        setStartError(errorMessage);
+      }
     }
     setStartingGame(false);
   }, [contract]);
@@ -350,7 +360,17 @@ const Game = () => {
       setNonce(generateNonce());
     } catch (error) {
       console.error('Error submitting score:', error);
-      setSubmitError(error instanceof Error ? error.message : 'Failed to submit score');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to submit score';
+      
+      // Check for insufficient funds error
+      if (errorMessage.toLowerCase().includes('insufficient') || 
+          errorMessage.toLowerCase().includes('funds') ||
+          errorMessage.toLowerCase().includes('balance') ||
+          errorMessage.toLowerCase().includes('gas')) {
+        setSubmitError("THIS AIN'T A CHARITY, PAL. FUND YOUR WALLET.");
+      } else {
+        setSubmitError(errorMessage);
+      }
     } finally {
       setSubmittingScore(false);
     }
