@@ -98,7 +98,7 @@ const Game = () => {
   const [lastValidationTime, setLastValidationTime] = useState<number>(0);
   
   // Configurable game costs (fetched from contract)
-  const [gameCost, setGameCost] = useState<string>('2.5'); // Default fallback
+  const [gameCost, setGameCost] = useState<string>('3');
   const [gameCostWei, setGameCostWei] = useState<string>('0');
   const [prizePoolShare, setPrizePoolShare] = useState<string>('75'); // Default fallback (75%)
   
