@@ -1,4 +1,4 @@
-import { Wallet } from 'ethers';
+import { Wallet } from 'ethers/lib/ethers';
 import { isAddress, solidityKeccak256, arrayify } from 'ethers/lib/utils';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
