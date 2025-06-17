@@ -8,7 +8,7 @@ import { ethers } from 'ethers'
 import WHACK_A_MONKEY_ABI from './WhackAMonkeyABI.json'
 import { WHACK_A_MONKEY_ADDRESS } from './contractAddress'
 import { Contract } from 'ethers'
-import { signScore, generateNonce, verifySignature } from '../utils/api'
+import { signScore, verifySignature } from '../utils/api'
 import { GlyphWidget } from '@use-glyph/sdk-react'
 
 // Game constants
@@ -87,7 +87,7 @@ const Game = () => {
   const [startError, setStartError] = useState<string | null>(null);
   const [submittingScore, setSubmittingScore] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [nonce, setNonce] = useState<number>(generateNonce());
+  const [nonce, setNonce] = useState<string | null>(null);
   const [isWhacking, setIsWhacking] = useState(false);
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [prizePool, setPrizePool] = useState<string | null>(null);
@@ -284,7 +284,7 @@ const Game = () => {
       setScoreSignature(null);
       setSignScoreError(null);
       setSubmitError(null);
-      setNonce(generateNonce());
+      setNonce(null);
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to start game';
       
@@ -401,16 +401,19 @@ const Game = () => {
 
   // Update handleSubmitScore to require scoreSignature
   const handleSubmitScore = async () => {
-    if (!playerAddress || !contract || !scoreSignature) return;
+    if (!playerAddress || !contract || !scoreSignature || !nonce) return;
     setSubmittingScore(true);
     setSubmitError(null);
     try {
-      if (!verifySignature(playerAddress, points, nonce, scoreSignature)) {
+      const nonceNumber = parseInt(nonce, 10);
+      if (!verifySignature(playerAddress, points, nonceNumber, scoreSignature)) {
         throw new Error('Invalid signature');
       }
-      const tx = await contract.submitScore(points, nonce, scoreSignature);
+      const tx = await contract.submitScore(points, nonceNumber, scoreSignature);
       await tx.wait();
-      setNonce(generateNonce());
+      // Clear the signature and nonce after successful submission
+      setScoreSignature(null);
+      setNonce(null);
       setPrizeClaimed(true);
     } catch (error) {
       console.error('Error submitting score:', error);
@@ -418,8 +421,7 @@ const Game = () => {
       if (errorMessage.toLowerCase().includes('old nonce')) {
         setSubmitError("This score has already been claimed or the session expired. Please validate your score again!");
         setScoreSignature(null);
-        setSignScoreError(null);
-        setNonce(generateNonce());
+        setNonce(null);
       } else if (errorMessage.toLowerCase().includes('insufficient') || 
                  errorMessage.toLowerCase().includes('funds') ||
                  errorMessage.toLowerCase().includes('balance') ||
@@ -956,22 +958,6 @@ const Game = () => {
       window.removeEventListener('keyup', handleKeyUp);
     };
   }, [isWhacking, handleHoleClick]);
-
-  // Auto-refresh nonce every 30 seconds when on winner screen to prevent expiration
-  useEffect(() => {
-    if (gameState === 'winner' && !prizeClaimed) {
-      const interval = setInterval(() => {
-        setNonce(generateNonce());
-        // Clear any existing signature since nonce changed
-        if (scoreSignature) {
-          setScoreSignature(null);
-          setSignScoreError(null);
-        }
-      }, 30000); // 30 seconds
-
-      return () => clearInterval(interval);
-    }
-  }, [gameState, prizeClaimed, scoreSignature]);
 
   // Calculate if maintenance mode should be active
   const isMaintenance = prizePool !== null && minPrizePoolBuffer !== null && parseFloat(prizePool) < parseFloat(minPrizePoolBuffer);
