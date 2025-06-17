@@ -22,8 +22,9 @@ function generateSecureNonce(player: string): number {
   // Get or create session
   let session = playerSessions.get(player);
   if (!session || (now - session.timestamp) > sessionTimeout) {
-    // Create new session with random session ID (smaller range to prevent overflow)
-    const sessionId = Math.floor(Math.random() * 10000); // 0-9999 instead of 0-999999
+    // Create new session with very high timestamp-based session ID
+    // Use current timestamp * 1000000 to ensure we're always above any previous nonce
+    const sessionId = now * 1000000 + Math.floor(Math.random() * 1000000);
     session = { sessionId, lastNonce: 0, timestamp: now };
     playerSessions.set(player, session);
   }
@@ -32,8 +33,8 @@ function generateSecureNonce(player: string): number {
   session.lastNonce += 1;
   session.timestamp = now; // Update session timestamp
   
-  // Combine session ID with nonce to create unique, unpredictable value
-  const nonce = session.sessionId * 10000 + session.lastNonce; // Smaller multiplier
+  // The session ID is already very high, just add the nonce counter
+  const nonce = session.sessionId + session.lastNonce;
   
   return nonce;
 }
