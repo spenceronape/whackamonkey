@@ -330,35 +330,34 @@ const Game = () => {
     return () => clearInterval(interval);
   }, [contract]);
 
-  useEffect(() => {
-    if (gameState === 'winner' && playerAddress && points > 0 && nonce) {
-      setSigningScore(true);
-      setSignScoreError(null);
-      signScore(playerAddress, points, nonce)
-        .then(({ signature }) => {
-          setScoreSignature(signature);
-        })
-        .catch((err) => {
-          setSignScoreError(err instanceof Error ? err.message : 'Failed to sign score');
-          setScoreSignature(null);
-        })
-        .finally(() => setSigningScore(false));
-    } else if (gameState !== 'winner') {
-      setScoreSignature(null);
-      setSignScoreError(null);
+  // Handler for user-initiated validation
+  const handleValidateScore = async () => {
+    if (!playerAddress || !points || !nonce) {
+      setSignScoreError('Missing player address, score, or nonce.');
+      return;
     }
-  }, [gameState, playerAddress, points, nonce]);
+    setSigningScore(true);
+    setSignScoreError(null);
+    try {
+      const { signature } = await signScore(playerAddress, points, nonce);
+      setScoreSignature(signature);
+    } catch (err) {
+      setSignScoreError(err instanceof Error ? err.message : 'Failed to validate score');
+      setScoreSignature(null);
+    } finally {
+      setSigningScore(false);
+    }
+  };
 
+  // Update handleSubmitScore to require scoreSignature
   const handleSubmitScore = async () => {
     if (!playerAddress || !contract || !scoreSignature) return;
     setSubmittingScore(true);
     setSubmitError(null);
     try {
-      // Verify signature before submitting to contract
       if (!verifySignature(playerAddress, points, nonce, scoreSignature)) {
         throw new Error('Invalid signature');
       }
-      // Submit score to contract
       const tx = await contract.submitScore(points, nonce, scoreSignature);
       await tx.wait();
       setNonce(generateNonce());
@@ -766,23 +765,43 @@ const Game = () => {
               >
                 Share this on X
               </Button>
-              <Button
-                colorScheme="yellow"
-                size="lg"
-                fontSize={{ base: "md", md: "xl" }}
-                fontWeight="bold"
-                px={10}
-                py={6}
-                borderRadius="full"
-                boxShadow="0 0 16px #FFD600"
-                aria-label="Claim your prize"
-                isLoading={submittingScore || signingScore}
-                onClick={handleSubmitScore}
-                isDisabled={!contract || submittingScore || signingScore || !scoreSignature}
-              >
-                {submittingScore ? 'Submitting...' : signingScore ? 'Validating Score...' : 'Claim Prize'}
-              </Button>
+              {!scoreSignature && (
+                <Button
+                  colorScheme="yellow"
+                  size="lg"
+                  fontSize={{ base: "md", md: "xl" }}
+                  fontWeight="bold"
+                  px={10}
+                  py={6}
+                  borderRadius="full"
+                  boxShadow="0 0 16px #FFD600"
+                  aria-label="Validate your score"
+                  isLoading={signingScore}
+                  onClick={handleValidateScore}
+                  isDisabled={signingScore}
+                >
+                  {signingScore ? 'Validating...' : 'Validate Score'}
+                </Button>
+              )}
               {signScoreError && <Text color="red.400">{signScoreError}</Text>}
+              {scoreSignature && (
+                <Button
+                  colorScheme="yellow"
+                  size="lg"
+                  fontSize={{ base: "md", md: "xl" }}
+                  fontWeight="bold"
+                  px={10}
+                  py={6}
+                  borderRadius="full"
+                  boxShadow="0 0 16px #FFD600"
+                  aria-label="Claim your prize"
+                  isLoading={submittingScore}
+                  onClick={handleSubmitScore}
+                  isDisabled={!contract || submittingScore}
+                >
+                  {submittingScore ? 'Submitting...' : 'Claim Prize'}
+                </Button>
+              )}
               {submitError && <Text color="red.400">{submitError}</Text>}
             </VStack>
           </Box>
