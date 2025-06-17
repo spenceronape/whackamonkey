@@ -7,8 +7,8 @@ const wallet = new Wallet(PRIVATE_KEY!);
 
 // Maximum allowed score to prevent cheating
 const MAX_SCORE = 2000;
-// Minimum time between submissions (in seconds)
-const MIN_SUBMISSION_INTERVAL = 60;
+// Minimum time between submissions (in seconds) - reduced for better UX
+const MIN_SUBMISSION_INTERVAL = 10;
 
 // In-memory cache for recent submissions
 const recentSubmissions = new Map<string, number>();

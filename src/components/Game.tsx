@@ -97,6 +97,7 @@ const Game = () => {
   const [prizeClaimed, setPrizeClaimed] = useState(false);
   const [highScore, setHighScore] = useState<number | null>(null);
   const [minPrizePoolBuffer, setMinPrizePoolBuffer] = useState<string | null>(null);
+  const [lastValidationTime, setLastValidationTime] = useState<number>(0);
 
   // Preload sounds
   const hitAudioRefs = useRef<HTMLAudioElement[]>([]);
@@ -384,15 +385,30 @@ const Game = () => {
       setSignScoreError('Missing player address or score.');
       return;
     }
+    
+    // Debounce validation requests
+    const now = Date.now();
+    if (now - lastValidationTime < 2000) { // 2 second debounce
+      setSignScoreError('Please wait a moment before trying again.');
+      return;
+    }
+    
     setSigningScore(true);
     setSignScoreError(null);
+    setLastValidationTime(now);
+    
     try {
       // Call signScore, which now returns both signature and nonce
       const { signature, nonce } = await signScore(playerAddress, points);
       setScoreSignature(signature);
       setNonce(nonce);
     } catch (err) {
-      setSignScoreError(err instanceof Error ? err.message : 'Failed to validate score');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to validate score';
+      if (errorMessage.includes('429') || errorMessage.includes('Too many submissions')) {
+        setSignScoreError('Please wait a moment before trying again. Rate limit exceeded.');
+      } else {
+        setSignScoreError(errorMessage);
+      }
       setScoreSignature(null);
     } finally {
       setSigningScore(false);
@@ -429,7 +445,7 @@ const Game = () => {
       console.error('Error submitting score:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to submit score';
       if (errorMessage.toLowerCase().includes('old nonce')) {
-        setSubmitError("This score has already been claimed or the session expired. Please validate your score again!");
+        setSubmitError("Score validation expired. Please validate your score again to claim your prize!");
         setScoreSignature(null);
         setNonce(null);
       } else if (errorMessage.toLowerCase().includes('insufficient') || 
@@ -437,8 +453,13 @@ const Game = () => {
                  errorMessage.toLowerCase().includes('balance') ||
                  errorMessage.toLowerCase().includes('gas')) {
         setSubmitError("THIS AIN'T A CHARITY, PAL. FUND YOUR WALLET.");
+      } else if (errorMessage.toLowerCase().includes('already claimed') ||
+                 errorMessage.toLowerCase().includes('already submitted')) {
+        setSubmitError("This score has already been claimed! Try getting a higher score next time!");
+        setScoreSignature(null);
+        setNonce(null);
       } else {
-        setSubmitError(errorMessage);
+        setSubmitError(`Submission failed: ${errorMessage}`);
       }
     } finally {
       setSubmittingScore(false);
@@ -869,7 +890,8 @@ const Game = () => {
                   aria-label="Validate your score"
                   isLoading={signingScore}
                   onClick={handleValidateScore}
-                  isDisabled={signingScore}
+                  isDisabled={signingScore || (Date.now() - lastValidationTime < 2000)}
+                  opacity={signingScore || (Date.now() - lastValidationTime < 2000) ? 0.6 : 1}
                 >
                   {signingScore ? 'Validating...' : 'Validate Score'}
                 </Button>
