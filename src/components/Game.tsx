@@ -964,18 +964,6 @@ const Game = () => {
   // Calculate if maintenance mode should be active
   const isMaintenance = prizePool !== null && minPrizePoolBuffer !== null && parseFloat(prizePool) < parseFloat(minPrizePoolBuffer);
 
-  // Temporary testing feature - simulate win for specific wallet
-  const TEST_WALLET = '0x4d6f6f4ef5e5f74074Ad0798CE44436491750A2E';
-  const isTestWallet = playerAddress?.toLowerCase() === TEST_WALLET.toLowerCase();
-  
-  const simulateWin = () => {
-    if (isTestWallet && highScore !== null) {
-      setPoints(highScore + 1);
-      setGameState('winner');
-      console.log('🧪 TEST MODE: Simulated win for test wallet');
-    }
-  };
-
   // Add keyboard event handlers
   useEffect(() => {
     const handleKeyDown = (e: Event): void => {
@@ -1008,28 +996,6 @@ const Game = () => {
 
   return (
     <Box minH="calc(100vh - 80px)" display="flex" flexDirection="column" justifyContent="center" alignItems="center" bg="#1D0838" flexGrow={1} mt={{ base: "-5vh", md: "-15vh" }}>
-      {/* Temporary testing indicator */}
-      {isTestWallet && (
-        <Box 
-          position="fixed" 
-          top={4} 
-          right={4} 
-          bg="yellow.500" 
-          color="black" 
-          px={3} 
-          py={1} 
-          borderRadius="md" 
-          fontSize="sm" 
-          fontWeight="bold"
-          zIndex={1000}
-          cursor="pointer"
-          onClick={simulateWin}
-          _hover={{ bg: "yellow.400" }}
-        >
-          🧪 TEST MODE: Click to simulate win
-        </Box>
-      )}
-      
       {gameState === 'playing' ? (
         <Box
           ref={gameAreaRef}
