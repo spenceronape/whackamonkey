@@ -7,10 +7,12 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 contract WhackAMonkey is Ownable, ReentrancyGuard, AccessControl {
+    // Configurable state variables (previously constants)
+    uint256 public gameCost = 2.5 ether; // 2.5 $APE (native token) - now configurable
+    uint256 public protocolFee = 0.5 ether; // 0.5 $APE - now configurable
+    uint256 public prizePoolShare = 75e16; // 0.75 * 1e18 - now configurable
+    
     // Constants
-    uint256 public constant GAME_COST = 2.5 ether; // 2.5 $APE (native token)
-    uint256 public constant PROTOCOL_FEE = 0.5 ether; // 0.5 $APE
-    uint256 public constant PRIZE_POOL_SHARE = 75e16; // 0.75 * 1e18
     uint256 public constant DEFAULT_MIN_BUFFER = 2 ether; // 2 $APE
 
     // Role definitions
@@ -50,6 +52,9 @@ contract WhackAMonkey is Ownable, ReentrancyGuard, AccessControl {
     event Paused();
     event Unpaused();
     event Rescue(address indexed token, uint256 amount, address indexed to);
+    event GameCostUpdated(uint256 newGameCost);
+    event ProtocolFeeUpdated(uint256 newProtocolFee);
+    event PrizePoolShareUpdated(uint256 newPrizePoolShare);
 
     // Modifiers
     modifier whenGameActive() {
@@ -73,10 +78,10 @@ contract WhackAMonkey is Ownable, ReentrancyGuard, AccessControl {
 
     // Game entry: pay to play
     function startGame() external payable whenGameActive whenNotPaused nonReentrant {
-        require(msg.value == GAME_COST, "Incorrect payment");
-        // 2 $APE to prize pool, 0.5 $APE to protocol fees
-        prizePool += (GAME_COST - PROTOCOL_FEE);
-        protocolFees += PROTOCOL_FEE;
+        require(msg.value == gameCost, "Incorrect payment");
+        // Prize pool gets gameCost - protocolFee, protocol fees get protocolFee
+        prizePool += (gameCost - protocolFee);
+        protocolFees += protocolFee;
         emit GameStarted(msg.sender, block.timestamp);
     }
 
@@ -117,7 +122,7 @@ contract WhackAMonkey is Ownable, ReentrancyGuard, AccessControl {
 
         // If score beats the threshold, allow claiming prize
         if (score >= scoreToBeat) {
-            uint256 prizeAmount = (prizePool * PRIZE_POOL_SHARE) / 1 ether;
+            uint256 prizeAmount = (prizePool * prizePoolShare) / 1 ether;
             require(prizePool - prizeAmount >= minPrizePoolBuffer, "Prize pool buffer too low");
             require(address(this).balance >= prizeAmount + protocolFees, "Insufficient contract balance");
             prizePool -= prizeAmount;
@@ -130,12 +135,12 @@ contract WhackAMonkey is Ownable, ReentrancyGuard, AccessControl {
     function setGameActive(bool _active) external onlyOwner {
         gameActive = _active;
     }
-    function withdrawProtocolFees() external onlyOwner {
+    function withdrawProtocolFees() external onlyOperator {
         require(protocolFees > 0, "No fees to withdraw");
         uint256 amount = protocolFees;
         protocolFees = 0;
-        (payable(owner())).transfer(amount);
-        emit ProtocolFeeWithdrawn(owner(), amount);
+        (payable(msg.sender)).transfer(amount);
+        emit ProtocolFeeWithdrawn(msg.sender, amount);
     }
     function emergencyWithdraw() external onlyOwner {
         uint256 balance = address(this).balance;
@@ -177,6 +182,24 @@ contract WhackAMonkey is Ownable, ReentrancyGuard, AccessControl {
     function setMinPrizePoolBuffer(uint256 newBuffer) external onlyOwner {
         minPrizePoolBuffer = newBuffer;
         emit MinPrizePoolBufferUpdated(newBuffer);
+    }
+    function setGameCost(uint256 newGameCost) external onlyOperator {
+        require(newGameCost > 0, "Game cost must be greater than 0");
+        require(newGameCost >= protocolFee, "Game cost must be >= protocol fee");
+        gameCost = newGameCost;
+        emit GameCostUpdated(newGameCost);
+    }
+    function setProtocolFee(uint256 newProtocolFee) external onlyOperator {
+        require(newProtocolFee > 0, "Protocol fee must be greater than 0");
+        require(newProtocolFee <= gameCost, "Protocol fee cannot exceed game cost");
+        protocolFee = newProtocolFee;
+        emit ProtocolFeeUpdated(newProtocolFee);
+    }
+    function setPrizePoolShare(uint256 newPrizePoolShare) external onlyOperator {
+        require(newPrizePoolShare > 0, "Prize pool share must be greater than 0");
+        require(newPrizePoolShare <= 1 ether, "Prize pool share cannot exceed 100%");
+        prizePoolShare = newPrizePoolShare;
+        emit PrizePoolShareUpdated(newPrizePoolShare);
     }
     // Rescue any ERC20 tokens sent to this contract by mistake
     function rescueTokens(address token, uint256 amount, address to) external onlyOwner {
