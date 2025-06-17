@@ -4,11 +4,11 @@ schema:
 dataSources:
   - kind: ethereum/contract
     name: WhackAMonkey
-    network: mainnet # or your target network
+    network: mainnet
     source:
-      address: "<CONTRACT_ADDRESS>"
+      address: "0x5fEeD9189781b25eA4Cd9B9EdF3756F183D81aDb"
       abi: WhackAMonkey
-      startBlock: <START_BLOCK>
+      startBlock: 0
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -16,12 +16,22 @@ dataSources:
       entities:
         - HighScore
         - PrizeClaim
+        - GamePlayed
+        - ConfigUpdated
       abis:
         - name: WhackAMonkey
           file: ./abis/WhackAMonkey.json
       eventHandlers:
         - event: HighScoreUpdated(address,uint256,uint256,address,uint256)
           handler: handleHighScoreUpdated
-        - event: PrizeClaimed(address,uint256)
+        - event: PrizeClaimed(address,uint256,uint256)
           handler: handlePrizeClaimed
+        - event: GamePlayed(address,uint256,uint256)
+          handler: handleGamePlayed
+        - event: GameCostUpdated(uint256)
+          handler: handleGameCostUpdated
+        - event: ProtocolFeeUpdated(uint256)
+          handler: handleProtocolFeeUpdated
+        - event: PrizePoolShareUpdated(uint256)
+          handler: handlePrizePoolShareUpdated
       file: ./src/mapping.ts 

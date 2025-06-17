@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
-import { Box, VStack, HStack, Text, Button, Input, Heading, useToast } from '@chakra-ui/react'
+import { Box, VStack, HStack, Text, Button, Input, Heading, useToast, Table, Thead, Tbody, Tr, Th, Td, Badge, Stat, StatLabel, StatNumber, StatGroup, Divider } from '@chakra-ui/react'
 import { useAccount, useWalletClient } from 'wagmi'
 import { ethers } from 'ethers'
 import WHACK_A_MONKEY_ABI from './WhackAMonkeyABI.json'
 import { WHACK_A_MONKEY_ADDRESS } from './contractAddress'
 import { Contract } from 'ethers'
+import { getGameStats, getRecentActivity, GameStats, GamePlayed, PrizeClaim, ConfigUpdated } from '../utils/subgraph'
 
 const AdminPanel = () => {
   const [contract, setContract] = useState<Contract | null>(null)
@@ -19,6 +20,16 @@ const AdminPanel = () => {
   const [isAdmin, setIsAdmin] = useState(false)
   const [loading, setLoading] = useState(false)
   const [withdrawing, setWithdrawing] = useState(false)
+  
+  // Subgraph data states
+  const [gameStats, setGameStats] = useState<GameStats | null>(null)
+  const [recentActivity, setRecentActivity] = useState<{
+    games: GamePlayed[];
+    claims: PrizeClaim[];
+    configUpdates: ConfigUpdated[];
+  } | null>(null)
+  const [loadingStats, setLoadingStats] = useState(false)
+  
   const { address } = useAccount()
   const { data: walletClient } = useWalletClient()
   const toast = useToast()
@@ -70,6 +81,47 @@ const AdminPanel = () => {
     }
     fetchData()
   }, [readContract, address])
+
+  // Fetch subgraph data
+  useEffect(() => {
+    const fetchSubgraphData = async () => {
+      if (isAdmin) {
+        setLoadingStats(true)
+        try {
+          const [stats, activity] = await Promise.all([
+            getGameStats(),
+            getRecentActivity(20)
+          ])
+          setGameStats(stats)
+          setRecentActivity(activity)
+        } catch (error) {
+          console.error('Error fetching subgraph data:', error)
+          toast({
+            title: 'Warning',
+            description: 'Failed to load analytics data from subgraph',
+            status: 'warning',
+            duration: 3000,
+            isClosable: true,
+          })
+        } finally {
+          setLoadingStats(false)
+        }
+      }
+    }
+    fetchSubgraphData()
+  }, [isAdmin, toast])
+
+  const formatAddress = (address: string) => {
+    return `${address.slice(0, 6)}...${address.slice(-4)}`
+  }
+
+  const formatTimestamp = (timestamp: string) => {
+    return new Date(parseInt(timestamp) * 1000).toLocaleString()
+  }
+
+  const formatEther = (value: string) => {
+    return ethers.utils.formatEther(value)
+  }
 
   const handleUpdateGameCost = async () => {
     if (!contract || !gameCost) return
@@ -345,6 +397,132 @@ const AdminPanel = () => {
         <Text fontSize="sm" color="gray.400" textAlign="center">
           ⚠️ Changes take effect immediately. Make sure the protocol fee doesn't exceed the game cost.
         </Text>
+
+        {/* Analytics Section */}
+        {isAdmin && (
+          <>
+            <Divider borderColor="gray.600" />
+            
+            <Heading size="md" color="yellow.400" textAlign="center" mt={6}>
+              📊 Analytics Dashboard
+            </Heading>
+
+            {loadingStats ? (
+              <Box p={4} bg="gray.700" borderRadius="md" textAlign="center">
+                <Text color="gray.400">Loading analytics data...</Text>
+              </Box>
+            ) : gameStats && (
+              <>
+                {/* Statistics Cards */}
+                <StatGroup>
+                  <Stat p={4} bg="gray.700" borderRadius="md">
+                    <StatLabel color="gray.300">Total Games</StatLabel>
+                    <StatNumber color="green.400">{gameStats.totalGamesPlayed}</StatNumber>
+                  </Stat>
+                  <Stat p={4} bg="gray.700" borderRadius="md">
+                    <StatLabel color="gray.300">Total Prizes</StatLabel>
+                    <StatNumber color="orange.400">{formatEther(gameStats.totalPrizePool)} APE</StatNumber>
+                  </Stat>
+                  <Stat p={4} bg="gray.700" borderRadius="md">
+                    <StatLabel color="gray.300">Protocol Fees</StatLabel>
+                    <StatNumber color="purple.400">{formatEther(gameStats.protocolFees)} APE</StatNumber>
+                  </Stat>
+                  <Stat p={4} bg="gray.700" borderRadius="md">
+                    <StatLabel color="gray.300">High Score</StatLabel>
+                    <StatNumber color="yellow.400">{gameStats.currentHighScore}</StatNumber>
+                  </Stat>
+                </StatGroup>
+
+                {/* Recent Games */}
+                {recentActivity?.games && recentActivity.games.length > 0 && (
+                  <Box p={4} bg="gray.700" borderRadius="md">
+                    <Text fontWeight="bold" color="yellow.400" mb={3}>Recent Games:</Text>
+                    <Box maxH="200px" overflowY="auto">
+                      <Table size="sm" variant="simple">
+                        <Thead>
+                          <Tr>
+                            <Th color="gray.300">Player</Th>
+                            <Th color="gray.300">Score</Th>
+                            <Th color="gray.300">Time</Th>
+                          </Tr>
+                        </Thead>
+                        <Tbody>
+                          {recentActivity.games.slice(0, 5).map((game) => (
+                            <Tr key={game.id}>
+                              <Td color="gray.300">{formatAddress(game.player)}</Td>
+                              <Td color="green.400">{game.score}</Td>
+                              <Td color="gray.400" fontSize="xs">{formatTimestamp(game.timestamp)}</Td>
+                            </Tr>
+                          ))}
+                        </Tbody>
+                      </Table>
+                    </Box>
+                  </Box>
+                )}
+
+                {/* Recent Prize Claims */}
+                {recentActivity?.claims && recentActivity.claims.length > 0 && (
+                  <Box p={4} bg="gray.700" borderRadius="md">
+                    <Text fontWeight="bold" color="yellow.400" mb={3}>Recent Prize Claims:</Text>
+                    <Box maxH="200px" overflowY="auto">
+                      <Table size="sm" variant="simple">
+                        <Thead>
+                          <Tr>
+                            <Th color="gray.300">Winner</Th>
+                            <Th color="gray.300">Amount</Th>
+                            <Th color="gray.300">Score</Th>
+                            <Th color="gray.300">Time</Th>
+                          </Tr>
+                        </Thead>
+                        <Tbody>
+                          {recentActivity.claims.slice(0, 5).map((claim) => (
+                            <Tr key={claim.id}>
+                              <Td color="gray.300">{formatAddress(claim.winner)}</Td>
+                              <Td color="orange.400">{formatEther(claim.amount)} APE</Td>
+                              <Td color="green.400">{claim.score}</Td>
+                              <Td color="gray.400" fontSize="xs">{formatTimestamp(claim.timestamp)}</Td>
+                            </Tr>
+                          ))}
+                        </Tbody>
+                      </Table>
+                    </Box>
+                  </Box>
+                )}
+
+                {/* Recent Config Updates */}
+                {recentActivity?.configUpdates && recentActivity.configUpdates.length > 0 && (
+                  <Box p={4} bg="gray.700" borderRadius="md">
+                    <Text fontWeight="bold" color="yellow.400" mb={3}>Recent Config Updates:</Text>
+                    <Box maxH="200px" overflowY="auto">
+                      <Table size="sm" variant="simple">
+                        <Thead>
+                          <Tr>
+                            <Th color="gray.300">Parameter</Th>
+                            <Th color="gray.300">Old Value</Th>
+                            <Th color="gray.300">New Value</Th>
+                            <Th color="gray.300">Updated By</Th>
+                          </Tr>
+                        </Thead>
+                        <Tbody>
+                          {recentActivity.configUpdates.slice(0, 5).map((update) => (
+                            <Tr key={update.id}>
+                              <Td>
+                                <Badge colorScheme="blue">{update.parameter}</Badge>
+                              </Td>
+                              <Td color="red.400">{formatEther(update.oldValue)}</Td>
+                              <Td color="green.400">{formatEther(update.newValue)}</Td>
+                              <Td color="gray.300">{formatAddress(update.updatedBy)}</Td>
+                            </Tr>
+                          ))}
+                        </Tbody>
+                      </Table>
+                    </Box>
+                  </Box>
+                )}
+              </>
+            )}
+          </>
+        )}
       </VStack>
     </Box>
   )

@@ -33,6 +33,27 @@ type PrizeClaim @entity {
   timestamp: BigInt!
 }
 
+type GamePlayed @entity {
+  id: ID!
+  player: Bytes!
+  score: BigInt!
+  timestamp: BigInt!
+  transactionHash: Bytes!
+  gameCost: BigInt!
+  protocolFee: BigInt!
+  prizePoolShare: BigInt!
+}
+
+type ConfigUpdated @entity {
+  id: ID!
+  parameter: String!
+  oldValue: BigInt!
+  newValue: BigInt!
+  timestamp: BigInt!
+  transactionHash: Bytes!
+  updatedBy: Bytes!
+}
+
 type ProtocolFeeWithdrawal @entity {
   id: ID!
   amount: BigInt!

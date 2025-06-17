@@ -1,0 +1,17 @@
+{
+  "name": "whack-a-monkey-subgraph",
+  "version": "1.0.0",
+  "description": "Subgraph for Whack-A-Monkey game",
+  "scripts": {
+    "codegen": "graph codegen",
+    "build": "graph build",
+    "deploy": "graph deploy --node https://api.goldsky.com/api/public/project_cm8grmwci3q4001w1e6mz7wzu/subgraphs/whack-a-monkey/1.0.1/gn --ipfs https://api.goldsky.com/api/public/project_cm8grmwci3q4001w1e6mz7wzu/subgraphs/whack-a-monkey/1.0.1/gn --product hosted-service"
+  },
+  "dependencies": {
+    "@graphprotocol/graph-cli": "^0.82.0",
+    "@graphprotocol/graph-ts": "^0.31.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+} 

@@ -1115,7 +1115,7 @@ const Game = () => {
               >
                 Share this on X
               </Button>
-              {!scoreSignature && (
+              {!scoreSignature && !prizeClaimed && (
                 <Button
                   colorScheme="yellow"
                   size="lg"
@@ -1135,7 +1135,7 @@ const Game = () => {
                 </Button>
               )}
               {signScoreError && <Text color="red.400">{signScoreError}</Text>}
-              {scoreSignature && (
+              {scoreSignature && !prizeClaimed && (
                 <Button
                   colorScheme="yellow"
                   size="lg"
@@ -1148,11 +1148,29 @@ const Game = () => {
                   aria-label="Claim your prize"
                   isLoading={submittingScore}
                   onClick={handleSubmitScore}
-                  isDisabled={!contract || submittingScore || prizeClaimed}
-                  opacity={prizeClaimed ? 0.5 : 1}
-                  cursor={prizeClaimed ? 'not-allowed' : 'pointer'}
+                  isDisabled={!contract || submittingScore}
+                  opacity={submittingScore ? 0.5 : 1}
+                  cursor={submittingScore ? 'not-allowed' : 'pointer'}
                 >
-                  {prizeClaimed ? 'Prize Claimed!' : (submittingScore ? 'Submitting...' : 'Claim Prize')}
+                  {submittingScore ? 'Submitting...' : 'Claim Prize'}
+                </Button>
+              )}
+              {prizeClaimed && (
+                <Button
+                  colorScheme="yellow"
+                  variant="outline"
+                  size="lg"
+                  fontSize={{ base: "md", md: "xl" }}
+                  fontWeight="bold"
+                  px={10}
+                  py={6}
+                  borderRadius="full"
+                  boxShadow="0 0 16px #FFD600"
+                  aria-label="Play Again"
+                  mt={2}
+                  isDisabled
+                >
+                  Prize Claimed!
                 </Button>
               )}
               {prizeClaimed && (
@@ -1173,25 +1191,41 @@ const Game = () => {
                   Play Again?
                 </Button>
               )}
-              {submitError && <Text color="red.400">{submitError}</Text>}
-              {submitError && submitError.toLowerCase().includes('old nonce') && (
-                <Button
-                  colorScheme="yellow"
-                  variant="outline"
-                  size="lg"
-                  fontSize={{ base: "md", md: "xl" }}
-                  fontWeight="bold"
-                  px={10}
-                  py={6}
-                  borderRadius="full"
-                  boxShadow="0 0 16px #FFD600"
-                  aria-label="Retry validation with fresh nonce"
-                  onClick={handleValidateScore}
-                  isLoading={signingScore}
-                  isDisabled={signingScore}
-                >
-                  {signingScore ? 'Validating...' : 'Retry Validation'}
-                </Button>
+              {submitError && <Text color="red.400">{(() => {
+                if (submitError.toLowerCase().includes('old nonce') || submitError.toLowerCase().includes('session expired')) {
+                  return 'Session expired. Please click "Validate Score" again to refresh your session and claim your prize.';
+                }
+                return submitError;
+              })()}</Text>}
+              {submitError && (submitError.toLowerCase().includes('old nonce') || submitError.toLowerCase().includes('session expired')) && !prizeClaimed && (
+                <>
+                  <Button
+                    colorScheme="yellow"
+                    variant="outline"
+                    size="lg"
+                    fontSize={{ base: "md", md: "xl" }}
+                    fontWeight="bold"
+                    px={10}
+                    py={6}
+                    borderRadius="full"
+                    boxShadow="0 0 16px #FFD600"
+                    aria-label="Retry validation with fresh nonce"
+                    onClick={handleValidateScore}
+                    isLoading={signingScore}
+                    isDisabled={signingScore}
+                  >
+                    {signingScore ? 'Validating...' : 'Retry Validation'}
+                  </Button>
+                  <Text color="gray.400" fontSize="sm" mt={2}>
+                    Still can't claim? DM <a href="https://x.com/MisterMonkee" target="_blank" rel="noopener noreferrer" style={{ color: '#1DA1F2', textDecoration: 'underline' }}>@MisterMonkee</a> on X with the error message and your nonce for help.
+                  </Text>
+                  {nonce && (
+                    <Box mt={1} p={2} bg="gray.700" borderRadius="md" fontSize="xs" color="yellow.200" wordBreak="break-all">
+                      <Text fontWeight="bold">Nonce:</Text>
+                      <Text>{nonce}</Text>
+                    </Box>
+                  )}
+                </>
               )}
             </VStack>
           </Box>
