@@ -36,7 +36,9 @@ function App() {
       if (contract) {
         try {
           const pool = await contract.getPrizePool();
-          setPrizePool(ethers.utils.formatEther(pool));
+          // Calculate winner's share (75%)
+          const winnerShare = ethers.utils.formatEther(pool.mul(75).div(100));
+          setPrizePool(winnerShare);
           const score = await contract.highScore();
           setHighScore(score.toString());
           const holder = await contract.highScoreHolder();
