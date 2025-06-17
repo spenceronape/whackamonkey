@@ -94,6 +94,7 @@ const Game = () => {
   const [scoreSignature, setScoreSignature] = useState<string | null>(null);
   const [signingScore, setSigningScore] = useState(false);
   const [signScoreError, setSignScoreError] = useState<string | null>(null);
+  const [prizeClaimed, setPrizeClaimed] = useState(false);
 
   // Preload sounds
   const hitAudioRefs = useRef<HTMLAudioElement[]>([]);
@@ -237,6 +238,11 @@ const Game = () => {
       setHits(0);
       setMisses(0);
       setMultiplier(1);
+      setPrizeClaimed(false);
+      setScoreSignature(null);
+      setSignScoreError(null);
+      setSubmitError(null);
+      setNonce(generateNonce());
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to start game';
       
@@ -361,13 +367,21 @@ const Game = () => {
       const tx = await contract.submitScore(points, nonce, scoreSignature);
       await tx.wait();
       setNonce(generateNonce());
+      setPrizeClaimed(true);
     } catch (error) {
       console.error('Error submitting score:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to submit score';
-      if (errorMessage.toLowerCase().includes('insufficient') || 
-          errorMessage.toLowerCase().includes('funds') ||
-          errorMessage.toLowerCase().includes('balance') ||
-          errorMessage.toLowerCase().includes('gas')) {
+      if (errorMessage.toLowerCase().includes('old nonce')) {
+        setSubmitError("This score has already been claimed or the session expired. Please play again!");
+        setGameState('idle');
+        setScoreSignature(null);
+        setSignScoreError(null);
+        setPrizeClaimed(false);
+        setNonce(generateNonce());
+      } else if (errorMessage.toLowerCase().includes('insufficient') || 
+                 errorMessage.toLowerCase().includes('funds') ||
+                 errorMessage.toLowerCase().includes('balance') ||
+                 errorMessage.toLowerCase().includes('gas')) {
         setSubmitError("THIS AIN'T A CHARITY, PAL. FUND YOUR WALLET.");
       } else {
         setSubmitError(errorMessage);
@@ -784,7 +798,7 @@ const Game = () => {
                 </Button>
               )}
               {signScoreError && <Text color="red.400">{signScoreError}</Text>}
-              {scoreSignature && (
+              {prizeClaimed ? (
                 <Button
                   colorScheme="yellow"
                   size="lg"
@@ -794,13 +808,36 @@ const Game = () => {
                   py={6}
                   borderRadius="full"
                   boxShadow="0 0 16px #FFD600"
-                  aria-label="Claim your prize"
-                  isLoading={submittingScore}
-                  onClick={handleSubmitScore}
-                  isDisabled={!contract || submittingScore}
+                  aria-label="Play Again"
+                  onClick={() => {
+                    setPrizeClaimed(false);
+                    setScoreSignature(null);
+                    setSignScoreError(null);
+                    setSubmitError(null);
+                    setGameState('idle');
+                  }}
                 >
-                  {submittingScore ? 'Submitting...' : 'Claim Prize'}
+                  Play Again
                 </Button>
+              ) : (
+                scoreSignature && (
+                  <Button
+                    colorScheme="yellow"
+                    size="lg"
+                    fontSize={{ base: "md", md: "xl" }}
+                    fontWeight="bold"
+                    px={10}
+                    py={6}
+                    borderRadius="full"
+                    boxShadow="0 0 16px #FFD600"
+                    aria-label="Claim your prize"
+                    isLoading={submittingScore}
+                    onClick={handleSubmitScore}
+                    isDisabled={!contract || submittingScore}
+                  >
+                    {submittingScore ? 'Submitting...' : 'Claim Prize'}
+                  </Button>
+                )
               )}
               {submitError && <Text color="red.400">{submitError}</Text>}
             </VStack>
