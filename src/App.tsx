@@ -202,6 +202,11 @@ function App() {
               <Text fontSize="xs" color="gray.400" mt={1}>
                 *High Score may claim 50% of pooled $APE, minus operator fee, buffer kept for future winners.
               </Text>
+              <Text fontSize="xs" color="yellow.300" mt={2}>
+                <a href="/TERMS_AND_CONDITIONS.md" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline' }}>
+                  Terms and Conditions
+                </a>
+              </Text>
             </Box>
             <HStack spacing={4} mt={{ base: 3, md: 0 }} justify="flex-end">
               <Box as="a" href="https://x.com/monkeeMister/" target="_blank" rel="noopener noreferrer" aria-label="X (Twitter)">
