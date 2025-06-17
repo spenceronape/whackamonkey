@@ -97,6 +97,9 @@ const Game = () => {
   const [isWhacking, setIsWhacking] = useState(false);
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [prizePool, setPrizePool] = useState<string | null>(null);
+  const [scoreSignature, setScoreSignature] = useState<string | null>(null);
+  const [signingScore, setSigningScore] = useState(false);
+  const [signScoreError, setSignScoreError] = useState<string | null>(null);
 
   // Preload sounds
   const hitAudioRefs = useRef<HTMLAudioElement[]>([]);
@@ -333,36 +336,41 @@ const Game = () => {
     return () => clearInterval(interval);
   }, [contract]);
 
+  useEffect(() => {
+    if (gameState === 'winner' && playerAddress && points > 0 && nonce) {
+      setSigningScore(true);
+      setSignScoreError(null);
+      signScore(playerAddress, points, nonce)
+        .then(({ signature }) => {
+          setScoreSignature(signature);
+        })
+        .catch((err) => {
+          setSignScoreError(err instanceof Error ? err.message : 'Failed to sign score');
+          setScoreSignature(null);
+        })
+        .finally(() => setSigningScore(false));
+    } else if (gameState !== 'winner') {
+      setScoreSignature(null);
+      setSignScoreError(null);
+    }
+  }, [gameState, playerAddress, points, nonce]);
+
   const handleSubmitScore = async () => {
-    if (!playerAddress || !contract) return;
-    
+    if (!playerAddress || !contract || !scoreSignature) return;
     setSubmittingScore(true);
     setSubmitError(null);
-    
     try {
-      // Get signature from API
-      const { signature } = await signScore(
-        playerAddress,
-        points,
-        nonce
-      );
-
       // Verify signature before submitting to contract
-      if (!verifySignature(playerAddress, points, nonce, signature)) {
+      if (!verifySignature(playerAddress, points, nonce, scoreSignature)) {
         throw new Error('Invalid signature');
       }
-
       // Submit score to contract
-      const tx = await contract.submitScore(points, nonce, signature);
+      const tx = await contract.submitScore(points, nonce, scoreSignature);
       await tx.wait();
-
-      // Generate new nonce for next game
       setNonce(generateNonce());
     } catch (error) {
       console.error('Error submitting score:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to submit score';
-      
-      // Check for insufficient funds error
       if (errorMessage.toLowerCase().includes('insufficient') || 
           errorMessage.toLowerCase().includes('funds') ||
           errorMessage.toLowerCase().includes('balance') ||
@@ -549,7 +557,7 @@ const Game = () => {
                 </Button>
               </VStack>
             ) : (
-              <HStack spacing={4} w="full">
+              <>
                 <Button
                   colorScheme="yellow"
                   size="lg"
@@ -565,16 +573,18 @@ const Game = () => {
                 >
                   {startingGame ? 'Starting...' : 'START GAME, I LOVE YOU'}
                 </Button>
-                <Box className="glyph-widget-horizontal">
-                  <GlyphWidget
-                    buttonProps={{
-                      showAvatar: false,
-                      showBalance: true,
-                      showUsername: false
-                    }}
-                  />
+                <Box mt={4} w="full" display="flex" justifyContent="center">
+                  <Box className="glyph-widget-horizontal">
+                    <GlyphWidget
+                      buttonProps={{
+                        showAvatar: false,
+                        showBalance: true,
+                        showUsername: false
+                      }}
+                    />
+                  </Box>
                 </Box>
-              </HStack>
+              </>
             )}
             {startError && <Text color="red.400">{startError}</Text>}
           </VStack>
@@ -772,13 +782,13 @@ const Game = () => {
                 borderRadius="full"
                 boxShadow="0 0 16px #FFD600"
                 aria-label="Claim your prize"
-                isLoading={submittingScore}
+                isLoading={submittingScore || signingScore}
                 onClick={handleSubmitScore}
-                isDisabled={!contract || submittingScore}
+                isDisabled={!contract || submittingScore || signingScore || !scoreSignature}
               >
-                {submittingScore ? 'Submitting...' : 'Claim Prize'}
+                {submittingScore ? 'Submitting...' : signingScore ? 'Validating Score...' : 'Claim Prize'}
               </Button>
-              {submittingScore && <Text color="yellow.300">Submitting your score to the blockchain...</Text>}
+              {signScoreError && <Text color="red.400">{signScoreError}</Text>}
               {submitError && <Text color="red.400">{submitError}</Text>}
             </VStack>
           </Box>
