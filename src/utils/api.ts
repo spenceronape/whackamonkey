@@ -13,6 +13,9 @@ export const verifySignature = (player: string, score: number, nonce: number, si
   );
   const messageHashBytes = arrayify(messageHash);
   const recoveredAddress = verifyMessage(messageHashBytes, signature);
+  console.log('Recovered address:', recoveredAddress);
+  console.log('Expected trusted signer:', TRUSTED_SIGNER);
+  console.log('Addresses match:', recoveredAddress.toLowerCase() === TRUSTED_SIGNER.toLowerCase());
   return recoveredAddress.toLowerCase() === TRUSTED_SIGNER.toLowerCase();
 };
 

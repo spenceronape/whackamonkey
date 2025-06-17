@@ -426,7 +426,10 @@ const Game = () => {
       const nonceNumber = typeof nonce === 'string' ? parseInt(nonce, 10) : nonce;
       console.log('Submitting with nonce:', nonceNumber, 'Original nonce:', nonce);
       
-      if (!verifySignature(playerAddress, points, nonceNumber, scoreSignature)) {
+      const signatureValid = verifySignature(playerAddress, points, nonceNumber, scoreSignature);
+      console.log('Signature verification result:', signatureValid);
+      
+      if (!signatureValid) {
         throw new Error('Invalid signature');
       }
       const tx = await contract.submitScore(points, nonceNumber, scoreSignature);
