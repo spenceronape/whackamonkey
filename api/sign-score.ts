@@ -12,14 +12,30 @@ const MIN_SUBMISSION_INTERVAL = 10;
 
 // In-memory cache for recent submissions
 const recentSubmissions = new Map<string, number>();
-// Track the last nonce used per player (monotonically increasing)
-const playerNonces = new Map<string, number>();
+// Track active sessions per player (session expires after 1 hour)
+const playerSessions = new Map<string, { sessionId: number; lastNonce: number; timestamp: number }>();
 
-function generateUniqueNonce(player: string): number {
-  const currentNonce = playerNonces.get(player) || 0;
-  const newNonce = currentNonce + 1;
-  playerNonces.set(player, newNonce);
-  return newNonce;
+function generateSecureNonce(player: string): number {
+  const now = Math.floor(Date.now() / 1000);
+  const sessionTimeout = 3600; // 1 hour session timeout
+  
+  // Get or create session
+  let session = playerSessions.get(player);
+  if (!session || (now - session.timestamp) > sessionTimeout) {
+    // Create new session with random session ID
+    const sessionId = Math.floor(Math.random() * 1000000);
+    session = { sessionId, lastNonce: 0, timestamp: now };
+    playerSessions.set(player, session);
+  }
+  
+  // Generate nonce based on session ID and increment
+  session.lastNonce += 1;
+  session.timestamp = now; // Update session timestamp
+  
+  // Combine session ID with nonce to create unique, unpredictable value
+  const nonce = session.sessionId * 1000000 + session.lastNonce;
+  
+  return nonce;
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -74,11 +90,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         recentSubmissions.delete(addr);
       }
     }
-    // Clean up old nonces (optional, for memory management)
-    // Note: We keep nonces persistent to ensure they always increase
+    // Clean up expired sessions (older than 1 hour)
+    for (const [addr, session] of playerSessions.entries()) {
+      if ((now - session.timestamp) > 3600) {
+        playerSessions.delete(addr);
+      }
+    }
 
     // Generate a unique, secure nonce for this player
-    const nonce = generateUniqueNonce(player);
+    const nonce = generateSecureNonce(player);
 
     // Sign the message
     const messageHash = ethers.utils.solidityKeccak256(
