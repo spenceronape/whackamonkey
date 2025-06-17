@@ -562,7 +562,7 @@ const Game = () => {
                   colorScheme="yellow"
                   size="lg"
                   onClick={startGame}
-                  flex={1}
+                  w="full"
                   h={{ base: "48px", md: "60px" }}
                   fontSize={{ base: "md", md: "xl" }}
                   _hover={{ transform: 'scale(1.05)' }}
