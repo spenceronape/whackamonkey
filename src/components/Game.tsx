@@ -531,7 +531,13 @@ const Game = () => {
                 height="100%"
                 draggable={false}
                 pointerEvents="none"
-                style={{ userSelect: 'none' }}
+                style={{
+                  userSelect: 'none',
+                  WebkitUserSelect: 'none',
+                  WebkitUserDrag: 'none',
+                  MozUserSelect: 'none',
+                  msUserSelect: 'none'
+                }}
               />
             </Box>
           )
