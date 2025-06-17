@@ -362,14 +362,17 @@ const Game = () => {
 
   // Handler for user-initiated validation
   const handleValidateScore = async () => {
-    if (!playerAddress || !points || !nonce) {
-      setSignScoreError('Missing player address, score, or nonce.');
+    if (!playerAddress || !points) {
+      setSignScoreError('Missing player address or score.');
       return;
     }
     setSigningScore(true);
     setSignScoreError(null);
     try {
-      const { signature } = await signScore(playerAddress, points, nonce);
+      // Generate fresh nonce right before validation
+      const freshNonce = generateNonce();
+      setNonce(freshNonce);
+      const { signature } = await signScore(playerAddress, points, freshNonce);
       setScoreSignature(signature);
     } catch (err) {
       setSignScoreError(err instanceof Error ? err.message : 'Failed to validate score');
@@ -396,11 +399,9 @@ const Game = () => {
       console.error('Error submitting score:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to submit score';
       if (errorMessage.toLowerCase().includes('old nonce')) {
-        setSubmitError("This score has already been claimed or the session expired. Please play again!");
-        setGameState('idle');
+        setSubmitError("This score has already been claimed or the session expired. Please validate your score again!");
         setScoreSignature(null);
         setSignScoreError(null);
-        setPrizeClaimed(false);
         setNonce(generateNonce());
       } else if (errorMessage.toLowerCase().includes('insufficient') || 
                  errorMessage.toLowerCase().includes('funds') ||
@@ -874,6 +875,25 @@ const Game = () => {
                 </Button>
               )}
               {submitError && <Text color="red.400">{submitError}</Text>}
+              {submitError && submitError.toLowerCase().includes('old nonce') && (
+                <Button
+                  colorScheme="yellow"
+                  variant="outline"
+                  size="lg"
+                  fontSize={{ base: "md", md: "xl" }}
+                  fontWeight="bold"
+                  px={10}
+                  py={6}
+                  borderRadius="full"
+                  boxShadow="0 0 16px #FFD600"
+                  aria-label="Retry validation with fresh nonce"
+                  onClick={handleValidateScore}
+                  isLoading={signingScore}
+                  isDisabled={signingScore}
+                >
+                  {signingScore ? 'Validating...' : 'Retry Validation'}
+                </Button>
+              )}
             </VStack>
           </Box>
         )
@@ -909,6 +929,22 @@ const Game = () => {
       window.removeEventListener('keyup', handleKeyUp);
     };
   }, [isWhacking, handleHoleClick]);
+
+  // Auto-refresh nonce every 30 seconds when on winner screen to prevent expiration
+  useEffect(() => {
+    if (gameState === 'winner' && !prizeClaimed) {
+      const interval = setInterval(() => {
+        setNonce(generateNonce());
+        // Clear any existing signature since nonce changed
+        if (scoreSignature) {
+          setScoreSignature(null);
+          setSignScoreError(null);
+        }
+      }, 30000); // 30 seconds
+
+      return () => clearInterval(interval);
+    }
+  }, [gameState, prizeClaimed, scoreSignature]);
 
   return (
     <Box minH="calc(100vh - 80px)" display="flex" flexDirection="column" justifyContent="center" alignItems="center" bg="#1D0838" flexGrow={1} mt={{ base: "-5vh", md: "-15vh" }}>
