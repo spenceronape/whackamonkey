@@ -146,7 +146,7 @@ function App() {
       <Box minH="100vh" w="100vw" bg="#1D0838" pt={0} m={0} p={0}>
         <Game />
         {/* Bottom Navigation Bar */}
-        <Box as="footer" position="fixed" left={0} bottom={0} w="100vw" bg="#1D0838" px={{ base: 2, md: 8 }} py={2} zIndex={200} m={0} p={0}>
+        <Box as="footer" position="fixed" left={0} bottom={0} w="100vw" bg="#1D0838" px={{ base: 2, md: 8 }} py={4} mb={{ base: 4, md: 6 }} zIndex={200} m={0} p={0}>
           <Flex align="flex-end" justify="space-between" maxW="1200px" mx="auto" direction={{ base: 'column', md: 'row' }}>
             <Box color="gray.400" fontSize="sm" textAlign={{ base: 'center', md: 'left' }}>
               <Text fontSize="md" color="yellow.200" fontWeight="bold">© 2025 Mister Monkee Labs Worldwide</Text>

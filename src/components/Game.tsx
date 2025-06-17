@@ -759,9 +759,14 @@ const Game = () => {
               colorScheme="purple"
               variant="outline"
               fontWeight="bold"
-              fontSize="lg"
+              fontSize={{ base: "sm", md: "lg" }}
               mt={2}
               aria-label="Get Mister Monkee Fan Club Pass"
+              w="full"
+              whiteSpace="normal"
+              textAlign="center"
+              px={2}
+              py={3}
             >
               SO YOU DIDN'T WIN, OH WELL PAL, GO GET A FAN CLUB PASS ON ME.
             </Button>

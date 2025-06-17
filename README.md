@@ -9,7 +9,9 @@ A fun, open-source Web3 arcade game built on ApeChain where players try to whack
 - **Prize pool**: 2.5 $APE per play (2 $APE to pool, 0.5 $APE protocol fee)
 - **High score**: Beat the top score to win 75% of the pool
 - **Hall of Fame**: View the last 10 winners, their scores, prizes, and dates (via subgraph)
-- **Mobile responsive** UI
+- **Mobile responsive** UI and improved mobile/desktop balancing
+- **Secure backend nonce generation** for score validation (no more frontend nonce generation)
+- **Single-use nonces** enforced by both backend and smart contract for replay protection
 - **Public subgraph** for analytics and history: [Goldsky Subgraph](https://api.goldsky.com/api/public/project_cm8grmwci3q4001w1e6mz7wzu/subgraphs/whack-a-monkey/1.0.0/gn)
 - **Open for contributions**: Fork, build, and PR!
 
@@ -27,6 +29,7 @@ A fun, open-source Web3 arcade game built on ApeChain where players try to whack
 ## 🛠️ Tech Stack
 - **Frontend**: React, TypeScript, Chakra UI, Wagmi, Glyph Wallet
 - **Smart Contract**: Solidity, OpenZeppelin, ApeChain native $APE
+- **Backend**: Vercel serverless API (for secure nonce generation and signing)
 - **Subgraph**: Goldsky (for Hall of Fame, analytics)
 
 ---
@@ -59,6 +62,14 @@ npm run dev
 3. Commit your changes (`git commit -m 'Add some amazing feature'`)
 4. Push to your fork (`git push origin feature/amazing-feature`)
 5. Open a Pull Request to the `development` branch
+
+---
+
+## 🔒 Score Validation & Claim Flow
+- The backend generates a secure, unique nonce for each score validation request.
+- The frontend requests a signature and nonce from the backend, then submits both to the smart contract to claim prizes.
+- The smart contract enforces that each (player, nonce) pair can only be used once (prevents replay attacks).
+- If a session or nonce error occurs, the frontend will prompt the user to re-validate and retry.
 
 ---
 

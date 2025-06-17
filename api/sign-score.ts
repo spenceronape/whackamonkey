@@ -1,5 +1,6 @@
 import { Wallet, ethers } from 'ethers';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { randomBytes } from 'crypto';
 
 const PRIVATE_KEY = process.env.SIGNER_PRIVATE_KEY;
 const wallet = new Wallet(PRIVATE_KEY!);
@@ -11,6 +12,24 @@ const MIN_SUBMISSION_INTERVAL = 60;
 
 // In-memory cache for recent submissions
 const recentSubmissions = new Map<string, number>();
+// Track used nonces per player
+const usedNonces = new Map<string, Set<string>>();
+
+function generateUniqueNonce(player: string): string {
+  let nonce: string;
+  do {
+    nonce = randomBytes(8).toString('hex'); // 64-bit hex string
+  } while (usedNonces.get(player)?.has(nonce));
+  if (!usedNonces.has(player)) usedNonces.set(player, new Set());
+  usedNonces.get(player)!.add(nonce);
+  return nonce;
+}
+
+function markNonceUsed(player: string, nonce: string) {
+  if (usedNonces.has(player)) {
+    usedNonces.get(player)!.delete(nonce);
+  }
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   console.log('=== API HANDLER CALLED ===');
@@ -64,9 +83,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         recentSubmissions.delete(addr);
       }
     }
+    // Clean up old nonces (optional, for memory management)
+    for (const [addr, nonces] of usedNonces.entries()) {
+      if (nonces.size === 0) usedNonces.delete(addr);
+    }
 
-    // Generate the nonce
-    const nonce = Math.floor(Math.random() * 1000000);
+    // Generate a unique, secure nonce for this player
+    const nonce = generateUniqueNonce(player);
 
     // Sign the message
     const messageHash = ethers.utils.solidityKeccak256(
