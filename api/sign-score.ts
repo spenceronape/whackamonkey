@@ -12,23 +12,14 @@ const MIN_SUBMISSION_INTERVAL = 10;
 
 // In-memory cache for recent submissions
 const recentSubmissions = new Map<string, number>();
-// Track used nonces per player
-const usedNonces = new Map<string, Set<string>>();
+// Track the last nonce used per player (monotonically increasing)
+const playerNonces = new Map<string, number>();
 
-function generateUniqueNonce(player: string): string {
-  let nonce: string;
-  do {
-    nonce = randomBytes(4).toString('hex'); // 32-bit hex string (fits in JS safe integers)
-  } while (usedNonces.get(player)?.has(nonce));
-  if (!usedNonces.has(player)) usedNonces.set(player, new Set());
-  usedNonces.get(player)!.add(nonce);
-  return nonce;
-}
-
-function markNonceUsed(player: string, nonce: string) {
-  if (usedNonces.has(player)) {
-    usedNonces.get(player)!.delete(nonce);
-  }
+function generateUniqueNonce(player: string): number {
+  const currentNonce = playerNonces.get(player) || 0;
+  const newNonce = currentNonce + 1;
+  playerNonces.set(player, newNonce);
+  return newNonce;
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -84,14 +75,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
     // Clean up old nonces (optional, for memory management)
-    for (const [addr, nonces] of usedNonces.entries()) {
-      if (nonces.size === 0) usedNonces.delete(addr);
-    }
+    // Note: We keep nonces persistent to ensure they always increase
 
     // Generate a unique, secure nonce for this player
-    const nonceHex = generateUniqueNonce(player); // hex string
-    const nonceBN = ethers.BigNumber.from('0x' + nonceHex); // convert to BigNumber
-    const nonce = nonceBN.toString(); // decimal string
+    const nonce = generateUniqueNonce(player);
 
     // Sign the message
     const messageHash = ethers.utils.solidityKeccak256(
@@ -106,7 +93,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     res.status(200).json({ 
       signature,
-      nonce, // decimal string
+      nonce,
       timestamp: now,
       messageHash
     });

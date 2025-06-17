@@ -87,7 +87,7 @@ const Game = () => {
   const [startError, setStartError] = useState<string | null>(null);
   const [submittingScore, setSubmittingScore] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [nonce, setNonce] = useState<string | null>(null);
+  const [nonce, setNonce] = useState<string | number | null>(null);
   const [isWhacking, setIsWhacking] = useState(false);
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [prizePool, setPrizePool] = useState<string | null>(null);
@@ -421,16 +421,8 @@ const Game = () => {
     setSubmittingScore(true);
     setSubmitError(null);
     try {
-      // Safely convert nonce to number, handling potential overflow
-      let nonceNumber: number;
-      try {
-        nonceNumber = parseInt(nonce, 10);
-        if (isNaN(nonceNumber) || !Number.isSafeInteger(nonceNumber)) {
-          throw new Error('Nonce value too large or invalid');
-        }
-      } catch (parseError) {
-        throw new Error('Invalid nonce format');
-      }
+      // Nonce is now a number from the server, no conversion needed
+      const nonceNumber = typeof nonce === 'string' ? parseInt(nonce, 10) : nonce;
       
       if (!verifySignature(playerAddress, points, nonceNumber, scoreSignature)) {
         throw new Error('Invalid signature');
