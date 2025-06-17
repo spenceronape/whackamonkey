@@ -6,7 +6,7 @@ const PRIVATE_KEY = process.env.SIGNER_PRIVATE_KEY;
 const wallet = new Wallet(PRIVATE_KEY!);
 
 // Maximum allowed score to prevent cheating
-const MAX_SCORE = 1000;
+const MAX_SCORE = 2000;
 // Minimum time between submissions (in seconds)
 const MIN_SUBMISSION_INTERVAL = 60;
 
@@ -14,14 +14,25 @@ const MIN_SUBMISSION_INTERVAL = 60;
 const recentSubmissions = new Map<string, number>();
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  console.log('=== API HANDLER CALLED ===');
+  console.log('Method:', req.method);
+  console.log('URL:', req.url);
+  console.log('Headers:', JSON.stringify(req.headers, null, 2));
+  console.log('Body:', JSON.stringify(req.body, null, 2));
+  console.log('Query:', JSON.stringify(req.query, null, 2));
+  
   if (req.method === 'OPTIONS') {
+    console.log('Handling OPTIONS request');
     res.status(204).end();
     return;
   }
   if (req.method !== "POST") {
+    console.log('Method not allowed:', req.method);
     res.status(405).json({ error: "Method not allowed" });
     return;
   }
+  
+  console.log('Processing POST request...');
   try {
     const { player, score, nonce } = req.body;
 
