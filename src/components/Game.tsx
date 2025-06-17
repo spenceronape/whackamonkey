@@ -369,11 +369,10 @@ const Game = () => {
     setSigningScore(true);
     setSignScoreError(null);
     try {
-      // Generate fresh nonce right before validation
-      const freshNonce = generateNonce();
-      setNonce(freshNonce);
-      const { signature } = await signScore(playerAddress, points, freshNonce);
+      // Call signScore, which now returns both signature and nonce
+      const { signature, nonce } = await signScore(playerAddress, points);
       setScoreSignature(signature);
+      setNonce(nonce);
     } catch (err) {
       setSignScoreError(err instanceof Error ? err.message : 'Failed to validate score');
       setScoreSignature(null);

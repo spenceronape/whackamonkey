@@ -33,7 +33,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   
   console.log('Processing POST request...');
   try {
-    const { player, score, nonce } = req.body;
+    const { player, score } = req.body;
 
     // Input validation
     if (!ethers.utils.isAddress(player)) {
@@ -42,10 +42,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (!score || typeof score !== 'number' || score < 0 || score > MAX_SCORE) {
       return res.status(400).json({ error: "Invalid score" });
-    }
-
-    if (!nonce || typeof nonce !== 'number' || nonce < 0) {
-      return res.status(400).json({ error: "Invalid nonce" });
     }
 
     // Rate limiting check
@@ -69,6 +65,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
+    // Generate the nonce
+    const nonce = Math.floor(Math.random() * 1000000);
+
     // Sign the message
     const messageHash = ethers.utils.solidityKeccak256(
       ["address", "uint256", "uint256"],
@@ -82,8 +81,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     res.status(200).json({ 
       signature,
+      nonce,
       timestamp: now,
-      messageHash: messageHash
+      messageHash
     });
   } catch (error) {
     console.error('Error signing score:', error);

@@ -21,8 +21,8 @@ async function createServer() {
 
   // API routes
   app.post('/api/sign-score', async (req, res) => {
-    const { player, score, nonce } = req.body;
-    const signature = await signScoreUtil(player, score, nonce);
+    const { player, score } = req.body;
+    const signature = await signScoreUtil(player, score);
     res.json({ signature });
   });
 

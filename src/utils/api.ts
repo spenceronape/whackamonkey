@@ -16,15 +16,16 @@ export const verifySignature = (player: string, score: number, nonce: number, si
   return recoveredAddress.toLowerCase() === TRUSTED_SIGNER.toLowerCase();
 };
 
-export const signScore = async (player: string, score: number, nonce: number) => {
+export const signScore = async (player: string, score: number) => {
   const response = await fetch('/api/sign-score', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ player, score, nonce }),
+    body: JSON.stringify({ player, score }),
   });
   if (!response.ok) {
     const text = await response.text();
     throw new Error(`API error: ${response.status} - ${text}`);
   }
+  // Expect signature and nonce in the response
   return response.json();
 }; 
