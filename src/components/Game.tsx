@@ -20,7 +20,6 @@ const GAME_COST = '2.50' // APE tokens (2 $APE to prize pool, 0.50 $APE to opera
 const MONKEY_LIFETIME_START = 2000 // ms
 const MONKEY_LIFETIME_END = 800 // ms
 const CRUSHED_DISPLAY_TIME = 400; // ms
-const SCORE_TO_BEAT = 50;
 const GAME_COST_WEI = ethers.utils.parseEther('2.5');
 
 // Responsive, percentage-based coordinates for each hole
@@ -95,6 +94,7 @@ const Game = () => {
   const [signingScore, setSigningScore] = useState(false);
   const [signScoreError, setSignScoreError] = useState<string | null>(null);
   const [prizeClaimed, setPrizeClaimed] = useState(false);
+  const [highScore, setHighScore] = useState<number | null>(null);
 
   // Preload sounds
   const hitAudioRefs = useRef<HTMLAudioElement[]>([]);
@@ -152,7 +152,7 @@ const Game = () => {
       timeInterval = setInterval(() => {
         setTimeLeft((prev) => {
           if (prev <= 1) {
-            setGameState(pointsRef.current > SCORE_TO_BEAT ? 'winner' : 'gameOver');
+            setGameState(pointsRef.current > (highScore ?? 0) ? 'winner' : 'gameOver');
             return 0
           }
           return prev - 1
@@ -216,13 +216,31 @@ const Game = () => {
   useEffect(() => {
     if (isConnected && walletClient) {
       const provider = new ethers.providers.Web3Provider(walletClient as any);
-      const signer = provider.getSigner();
-      const c = new Contract(WHACK_A_MONKEY_ADDRESS, WHACK_A_MONKEY_ABI, signer);
+      const c = new Contract(WHACK_A_MONKEY_ADDRESS, WHACK_A_MONKEY_ABI, provider);
       setContract(c);
+      // Fetch high score
+      c.highScore().then((score: any) => setHighScore(Number(score))).catch(() => setHighScore(null));
     } else {
       setContract(null);
+      setHighScore(null);
     }
   }, [isConnected, walletClient]);
+
+  // Fetch high score every 10s for live updates
+  useEffect(() => {
+    if (!contract) return;
+    const fetchHighScore = async () => {
+      try {
+        const score = await contract.highScore();
+        setHighScore(Number(score));
+      } catch {
+        setHighScore(null);
+      }
+    };
+    fetchHighScore();
+    const interval = setInterval(fetchHighScore, 10000);
+    return () => clearInterval(interval);
+  }, [contract]);
 
   const startGame = useCallback(async () => {
     setStartError(null);
@@ -613,7 +631,7 @@ const Game = () => {
               <HStack spacing={{ base: 3, md: 6 }} justify="center" fontFamily="mono">
                 <VStack spacing={0}>
                   <Text color="gray.400" fontSize={{ base: "2xs", md: "sm" }}>SCORE TO BEAT</Text>
-                  <Text color="purple.400" fontSize={{ base: "lg", md: "xl" }} fontWeight="bold" fontFamily="mono">{SCORE_TO_BEAT}</Text>
+                  <Text color="purple.400" fontSize={{ base: "lg", md: "xl" }} fontWeight="bold" fontFamily="mono">{highScore !== null ? highScore : '...'}</Text>
                 </VStack>
                 <Text color="yellow.400">|</Text>
                 <VStack spacing={0}>
@@ -798,7 +816,7 @@ const Game = () => {
                 </Button>
               )}
               {signScoreError && <Text color="red.400">{signScoreError}</Text>}
-              {prizeClaimed ? (
+              {scoreSignature && (
                 <Button
                   colorScheme="yellow"
                   size="lg"
@@ -808,36 +826,40 @@ const Game = () => {
                   py={6}
                   borderRadius="full"
                   boxShadow="0 0 16px #FFD600"
+                  aria-label="Claim your prize"
+                  isLoading={submittingScore}
+                  onClick={handleSubmitScore}
+                  isDisabled={!contract || submittingScore || prizeClaimed}
+                  opacity={prizeClaimed ? 0.5 : 1}
+                  cursor={prizeClaimed ? 'not-allowed' : 'pointer'}
+                >
+                  {prizeClaimed ? 'Prize Claimed!' : (submittingScore ? 'Submitting...' : 'Claim Prize')}
+                </Button>
+              )}
+              {prizeClaimed && (
+                <Button
+                  colorScheme="yellow"
+                  variant="outline"
+                  size="lg"
+                  fontSize={{ base: "md", md: "xl" }}
+                  fontWeight="bold"
+                  px={10}
+                  py={6}
+                  borderRadius="full"
+                  boxShadow="0 0 16px #FFD600"
                   aria-label="Play Again"
+                  mt={2}
                   onClick={() => {
                     setPrizeClaimed(false);
                     setScoreSignature(null);
                     setSignScoreError(null);
                     setSubmitError(null);
                     setGameState('idle');
+                    setNonce(generateNonce());
                   }}
                 >
-                  Play Again
+                  Play Again?
                 </Button>
-              ) : (
-                scoreSignature && (
-                  <Button
-                    colorScheme="yellow"
-                    size="lg"
-                    fontSize={{ base: "md", md: "xl" }}
-                    fontWeight="bold"
-                    px={10}
-                    py={6}
-                    borderRadius="full"
-                    boxShadow="0 0 16px #FFD600"
-                    aria-label="Claim your prize"
-                    isLoading={submittingScore}
-                    onClick={handleSubmitScore}
-                    isDisabled={!contract || submittingScore}
-                  >
-                    {submittingScore ? 'Submitting...' : 'Claim Prize'}
-                  </Button>
-                )
               )}
               {submitError && <Text color="red.400">{submitError}</Text>}
             </VStack>
