@@ -1,4 +1,4 @@
-import { keccak256, arrayify, verifyMessage, AbiCoder, solidityKeccak256 } from 'ethers/lib/utils';
+import { arrayify, verifyMessage, solidityKeccak256 } from 'ethers/lib/utils';
 
 const TRUSTED_SIGNER = '0xE6Fce09AeC92fC6bE141a2C8CaaF5b01f62FC47F';
 
