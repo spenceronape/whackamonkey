@@ -89,7 +89,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Generate a unique, secure nonce for this player
-    const nonce = generateUniqueNonce(player);
+    const nonceHex = generateUniqueNonce(player); // hex string
+    const nonceBN = ethers.BigNumber.from('0x' + nonceHex); // convert to BigNumber
+    const nonce = nonceBN.toString(); // decimal string
 
     // Sign the message
     const messageHash = ethers.utils.solidityKeccak256(
@@ -104,7 +106,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     res.status(200).json({ 
       signature,
-      nonce,
+      nonce, // decimal string
       timestamp: now,
       messageHash
     });
