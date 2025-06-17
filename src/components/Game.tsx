@@ -965,7 +965,7 @@ const Game = () => {
   const isMaintenance = prizePool !== null && minPrizePoolBuffer !== null && parseFloat(prizePool) < parseFloat(minPrizePoolBuffer);
 
   // Temporary testing feature - simulate win for specific wallet
-  const TEST_WALLET = '0x765BAB543672c83F739d72ca0BC3D97C2347a33a';
+  const TEST_WALLET = '0x4d6f6f4ef5e5f74074Ad0798CE44436491750A2E';
   const isTestWallet = playerAddress?.toLowerCase() === TEST_WALLET.toLowerCase();
   
   const simulateWin = () => {
