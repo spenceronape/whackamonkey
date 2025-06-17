@@ -28,7 +28,6 @@ This document outlines the permissions and abilities of each wallet type in the 
 ---
 
 ## 🎮 Admin Wallet (Operator)
-**Address**: `0x4d6f6f4ef5e5f74074Ad0798CE44436491750A2E`
 **Role**: `OPERATOR_ROLE` (after being added by owner)
 
 ### ✅ **Operational Functions:**
@@ -99,7 +98,7 @@ Deploy the contract using your deployment wallet.
 ### 2. Add Admin as Operator
 ```solidity
 // Call from deployment wallet
-addOperator(0x4d6f6f4ef5e5f74074Ad0798CE44436491750A2E)
+addOperator()
 ```
 
 ### 3. Set Trusted Signer
@@ -109,7 +108,7 @@ setTrustedSigner(YOUR_BACKEND_WALLET_ADDRESS)
 ```
 
 ### 4. Admin Panel Access
-- Connect with admin wallet: `0x4d6f6f4ef5e5f74074Ad0798CE44436491750A2E`
+- Connect with admin wallet
 - Admin can now:
   - Update costs and fees
   - Withdraw accumulated protocol fees
@@ -188,13 +187,6 @@ setTrustedSigner(YOUR_BACKEND_WALLET_ADDRESS)
 - `submitScore(uint256, uint256, bytes)`
 - View functions (prize pool, high scores, etc.)
 
----
-
-## 🎯 Key Addresses
-
-- **Admin Wallet**: `0x4d6f6f4ef5e5f74074Ad0798CE44436491750A2E`
-- **Contract Address**: `0x5fEeD9189781b25eA4Cd9B9EdF3756F183D81aDb`
-- **Trusted Signer**: [To be set by owner]
 
 ---
 
