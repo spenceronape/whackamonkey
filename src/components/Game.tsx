@@ -96,6 +96,7 @@ const Game = () => {
   const [nonce, setNonce] = useState<number>(generateNonce());
   const [isWhacking, setIsWhacking] = useState(false);
   const [isSigningIn, setIsSigningIn] = useState(false);
+  const [prizePool, setPrizePool] = useState<string | null>(null);
 
   // Preload sounds
   const hitAudioRefs = useRef<HTMLAudioElement[]>([]);
@@ -300,6 +301,25 @@ const Game = () => {
     fetchStats();
     // Optionally, poll every 10s for live updates
     const interval = setInterval(fetchStats, 10000);
+    return () => clearInterval(interval);
+  }, [contract]);
+
+  // Fetch live prize pool and update every 10s
+  useEffect(() => {
+    const fetchPrizePool = async () => {
+      if (contract) {
+        try {
+          const pool = await contract.getPrizePool();
+          // Calculate winner's share (75%)
+          const winnerShare = ethers.utils.formatEther(pool.mul(75).div(100));
+          setPrizePool(winnerShare);
+        } catch (err) {
+          setPrizePool(null);
+        }
+      }
+    };
+    fetchPrizePool();
+    const interval = setInterval(fetchPrizePool, 10000);
     return () => clearInterval(interval);
   }, [contract]);
 
@@ -706,7 +726,7 @@ const Game = () => {
                 YOU WON
               </Text>
               <Text fontSize={{ base: '2xl', md: '3xl' }} color="#00FFB0" fontWeight="extrabold" textShadow="0 0 8px #00FFB0">
-                {DISPLAYED_PRIZE_POOL} $APE
+                {prizePool ? `${prizePool} $APE` : '...'}
               </Text>
               <Button
                 as="a"
